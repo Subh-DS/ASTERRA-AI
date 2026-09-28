@@ -1,0 +1,137 @@
+:root {
+  --font-display: 'Big Shoulders Display', 'Arial Narrow', sans-serif;
+  --font-body: 'Inter', 'Segoe UI', sans-serif;
+  --font-mono: 'IBM Plex Mono', 'Consolas', monospace;
+
+  --t-12: 12px;
+  --t-14: 14px;
+  --t-16: 16px;
+  --t-20: 20px;
+  --t-28: 28px;
+  --t-44: 44px;
+  --t-72: 72px;
+
+  --r-2: 2px;
+  --r-4: 4px;
+  --grid: 8px;
+
+  --header-h: 64px;
+  --mission-h: 0px;
+
+  /*
+   * Z-INDEX SYSTEM (no ad-hoc values — pick the nearest layer):
+   *   0  base terrain / page background / shell grid
+   *   1  page content (.app-content, .screen)
+   *   5  map canvas furniture (tools, attribution, pin callout)
+   *   10 viewer controls (rail, dock, display stack, HUD, compass)
+   *   11 in-scene floating labels (probe, measure)
+   *   15 viewer side panels (.panel-host)
+   *   20 hazard panel (.hz-panel)
+   *   30 map search results, rail tooltips
+   *   40 shell topbar, assistant handle
+   *   45 assistant dock
+   *   50 processing indicator pill
+   *   60 global alerts (banner, shortcuts dialog)
+   */
+}
+
+:root,
+[data-theme='dark'] {
+  --void: #05090c;
+  --void-2: #08110e;
+  --panel: #0d1517;
+  --panel-2: #0a1214;
+  --panel-glass: rgba(13, 21, 23, 0.72);
+  --contour: #2c4a3e;
+  --contour-dim: rgba(44, 74, 62, 0.45);
+  --paper: #ede7d6;
+  --paper-dim: #9aa79c;
+  --elevation: #e8a33d;
+  --signal: #4fd9c4;
+  --alert: #e2543a;
+
+  --on-elevation: #0b1310;
+  --elevation-hover: #f0b155;
+  --scrim: rgba(10, 18, 15, 0.86);
+  --scrim-solid: rgba(12, 21, 18, 0.98);
+  --scrim-grad: linear-gradient(rgba(8, 17, 14, 0.92), rgba(8, 17, 14, 0));
+  --hover: rgba(44, 74, 62, 0.4);
+  --hover-strong: rgba(44, 74, 62, 0.55);
+  --signal-wash: rgba(79, 217, 196, 0.06);
+  --elev-wash: rgba(232, 163, 61, 0.07);
+  --alert-wash: rgba(226, 84, 58, 0.1);
+  --mono-chip: rgba(44, 74, 62, 0.35);
+
+  --sky-top: #0c1813;
+  --sky-horizon: #2c3a30;
+  --scene-bg: #0a1511;
+  --fog: #13201a;
+
+  /* ASTERRA extension — cinematic geospatial command-center */
+  --asterra-cyan: #67e8f9;
+  --asterra-teal: #4fd9c4;
+  --asterra-amber: #e8a33d;
+  --asterra-line: rgba(148, 196, 180, 0.14);
+  --asterra-line-strong: rgba(148, 196, 180, 0.28);
+  --asterra-glass: rgba(8, 15, 17, 0.62);
+  --asterra-glass-strong: rgba(8, 15, 17, 0.86);
+  --asterra-text-dim: rgba(214, 228, 222, 0.62);
+  --asterra-text-faint: rgba(214, 228, 222, 0.38);
+  --asterra-radius: 3px;
+  --asterra-blur: blur(18px) saturate(1.2);
+  --asterra-ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* global header/footer — theme-aware surfaces */
+  --header-bg: rgba(5, 9, 12, 0.82);
+  --header-nav-bg: rgba(255, 255, 255, 0.03);
+  --header-nav-hover: rgba(255, 255, 255, 0.07);
+}
+
+[data-theme='light'] {
+  --void: #eae5d6;
+  --panel: #f7f3e7;
+  --panel-2: #efebdc;
+  --contour: #b5a88a;
+  --contour-dim: rgba(120, 108, 82, 0.5);
+  --paper: #1b2921;
+  --paper-dim: #66716a;
+  --elevation: #b36f12;
+  --signal: #0a7a68;
+  --alert: #c03a22;
+
+  --on-elevation: #fcf7ea;
+  --elevation-hover: #c9821f;
+  --scrim: rgba(250, 247, 236, 0.9);
+  --scrim-solid: rgba(250, 247, 236, 0.98);
+  --scrim-grad: linear-gradient(rgba(247, 243, 231, 0.95), rgba(247, 243, 231, 0));
+  --hover: rgba(181, 168, 138, 0.35);
+  --hover-strong: rgba(181, 168, 138, 0.55);
+  --signal-wash: rgba(10, 122, 104, 0.09);
+  --elev-wash: rgba(179, 111, 18, 0.1);
+  --alert-wash: rgba(192, 58, 34, 0.1);
+  --mono-chip: rgba(120, 108, 82, 0.28);
+
+  --sky-top: #a9c4cf;
+  --sky-horizon: #ece5cf;
+  --scene-bg: #dfe3d2;
+  --fog: #cfd8cc;
+
+  /* ASTERRA extension — light theme deliberate values (entry-safe contrast) */
+  --asterra-cyan: #0a7a68;
+  --asterra-teal: #0a7a68;
+  --asterra-amber: #b36f12;
+  --asterra-line: rgba(27, 41, 33, 0.14);
+  --asterra-line-strong: rgba(27, 41, 33, 0.3);
+  --asterra-glass: rgba(247, 243, 231, 0.86);
+  --asterra-glass-strong: rgba(247, 243, 231, 0.97);
+  --asterra-text-dim: rgba(27, 41, 33, 0.72);
+  --asterra-text-faint: rgba(27, 41, 33, 0.52);
+  --asterra-radius: 3px;
+  --asterra-blur: blur(18px) saturate(1.2);
+  --asterra-ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* global header/footer — theme-aware surfaces */
+  --header-bg: rgba(247, 243, 231, 0.9);
+  --header-nav-bg: rgba(27, 41, 33, 0.05);
+  --header-nav-hover: rgba(27, 41, 33, 0.1);
+}

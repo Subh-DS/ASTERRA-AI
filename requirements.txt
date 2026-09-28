@@ -1,0 +1,8 @@
+opencv-python
+numpy
+Pillow
+matplotlib
+huggingface_hub
+safetensors
+tqdm
+psutil

@@ -1,0 +1,1202 @@
+[
+  {
+    "index": 0,
+    "source_id": "./bochum/384_5701",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00000.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00000.npy"
+  },
+  {
+    "index": 1,
+    "source_id": "./bochum/377_5697",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00001.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00001.npy"
+  },
+  {
+    "index": 2,
+    "source_id": "./bochum/377_5709",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00002.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00002.npy"
+  },
+  {
+    "index": 3,
+    "source_id": "./bochum/379_5699",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00003.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00003.npy"
+  },
+  {
+    "index": 4,
+    "source_id": "./bochum/379_5708",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00004.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00004.npy"
+  },
+  {
+    "index": 5,
+    "source_id": "./bochum/380_5707",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00005.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00005.npy"
+  },
+  {
+    "index": 6,
+    "source_id": "./bochum/378_5707",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00006.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00006.npy"
+  },
+  {
+    "index": 7,
+    "source_id": "./bochum/385_5704",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00007.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00007.npy"
+  },
+  {
+    "index": 8,
+    "source_id": "./bochum/372_5705",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00008.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00008.npy"
+  },
+  {
+    "index": 9,
+    "source_id": "./bochum/376_5698",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00009.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00009.npy"
+  },
+  {
+    "index": 10,
+    "source_id": "./bochum/374_5703",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00010.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00010.npy"
+  },
+  {
+    "index": 11,
+    "source_id": "./bochum/374_5705",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00011.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00011.npy"
+  },
+  {
+    "index": 12,
+    "source_id": "./bochum/372_5701",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00012.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00012.npy"
+  },
+  {
+    "index": 13,
+    "source_id": "./bochum/368_5704",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00013.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00013.npy"
+  },
+  {
+    "index": 14,
+    "source_id": "./bochum/369_5700",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00014.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00014.npy"
+  },
+  {
+    "index": 15,
+    "source_id": "./bochum/374_5699",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00015.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00015.npy"
+  },
+  {
+    "index": 16,
+    "source_id": "./bochum/378_5709",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00016.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00016.npy"
+  },
+  {
+    "index": 17,
+    "source_id": "./bochum/373_5698",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00017.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00017.npy"
+  },
+  {
+    "index": 18,
+    "source_id": "./bochum/383_5707",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00018.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00018.npy"
+  },
+  {
+    "index": 19,
+    "source_id": "./bochum/369_5703",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00019.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00019.npy"
+  },
+  {
+    "index": 20,
+    "source_id": "./bochum/385_5702",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00020.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00020.npy"
+  },
+  {
+    "index": 21,
+    "source_id": "./bochum/370_5699",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00021.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00021.npy"
+  },
+  {
+    "index": 22,
+    "source_id": "./bochum/369_5699",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00022.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00022.npy"
+  },
+  {
+    "index": 23,
+    "source_id": "./bochum/377_5704",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00023.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00023.npy"
+  },
+  {
+    "index": 24,
+    "source_id": "./bochum/377_5705",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00024.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00024.npy"
+  },
+  {
+    "index": 25,
+    "source_id": "./bochum/378_5699",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00025.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00025.npy"
+  },
+  {
+    "index": 26,
+    "source_id": "./bochum/375_5703",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00026.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00026.npy"
+  },
+  {
+    "index": 27,
+    "source_id": "./bochum/379_5698",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00027.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00027.npy"
+  },
+  {
+    "index": 28,
+    "source_id": "./bochum/381_5710",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00028.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00028.npy"
+  },
+  {
+    "index": 29,
+    "source_id": "./bochum/379_5704",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00029.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00029.npy"
+  },
+  {
+    "index": 30,
+    "source_id": "./bochum/379_5705",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00030.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00030.npy"
+  },
+  {
+    "index": 31,
+    "source_id": "./bochum/381_5706",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00031.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00031.npy"
+  },
+  {
+    "index": 32,
+    "source_id": "./bochum/384_5704",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00032.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00032.npy"
+  },
+  {
+    "index": 33,
+    "source_id": "./bochum/375_5699",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00033.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00033.npy"
+  },
+  {
+    "index": 34,
+    "source_id": "./bochum/381_5709",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00034.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00034.npy"
+  },
+  {
+    "index": 35,
+    "source_id": "./bochum/374_5698",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00035.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00035.npy"
+  },
+  {
+    "index": 36,
+    "source_id": "./bochum/373_5700",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00036.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00036.npy"
+  },
+  {
+    "index": 37,
+    "source_id": "./bochum/380_5709",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00037.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00037.npy"
+  },
+  {
+    "index": 38,
+    "source_id": "./bochum/375_5697",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00038.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00038.npy"
+  },
+  {
+    "index": 39,
+    "source_id": "./bochum/370_5702",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00039.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00039.npy"
+  },
+  {
+    "index": 40,
+    "source_id": "./bochum/378_5701",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00040.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00040.npy"
+  },
+  {
+    "index": 41,
+    "source_id": "./bochum/383_5702",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00041.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00041.npy"
+  },
+  {
+    "index": 42,
+    "source_id": "./bochum/378_5708",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00042.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00042.npy"
+  },
+  {
+    "index": 43,
+    "source_id": "./bochum/383_5703",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00043.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00043.npy"
+  },
+  {
+    "index": 44,
+    "source_id": "./bochum/373_5704",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00044.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00044.npy"
+  },
+  {
+    "index": 45,
+    "source_id": "./bochum/370_5703",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00045.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00045.npy"
+  },
+  {
+    "index": 46,
+    "source_id": "./bochum/377_5707",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00046.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00046.npy"
+  },
+  {
+    "index": 47,
+    "source_id": "./bochum/384_5703",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00047.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00047.npy"
+  },
+  {
+    "index": 48,
+    "source_id": "./bochum/371_5704",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00048.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00048.npy"
+  },
+  {
+    "index": 49,
+    "source_id": "./bochum/368_5703",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00049.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00049.npy"
+  },
+  {
+    "index": 50,
+    "source_id": "./bochum/376_5701",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00050.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00050.npy"
+  },
+  {
+    "index": 51,
+    "source_id": "./bochum/370_5700",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00051.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00051.npy"
+  },
+  {
+    "index": 52,
+    "source_id": "./bochum/372_5708",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00052.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00052.npy"
+  },
+  {
+    "index": 53,
+    "source_id": "./bochum/376_5709",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00053.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00053.npy"
+  },
+  {
+    "index": 54,
+    "source_id": "./bochum/376_5696",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00054.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00054.npy"
+  },
+  {
+    "index": 55,
+    "source_id": "./bochum/379_5707",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00055.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00055.npy"
+  },
+  {
+    "index": 56,
+    "source_id": "./bochum/373_5707",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00056.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00056.npy"
+  },
+  {
+    "index": 57,
+    "source_id": "./bochum/383_5705",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00057.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00057.npy"
+  },
+  {
+    "index": 58,
+    "source_id": "./bochum/376_5706",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00058.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00058.npy"
+  },
+  {
+    "index": 59,
+    "source_id": "./bochum/373_5703",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00059.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00059.npy"
+  },
+  {
+    "index": 60,
+    "source_id": "./bochum/377_5699",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00060.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00060.npy"
+  },
+  {
+    "index": 61,
+    "source_id": "./bochum/380_5704",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00061.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00061.npy"
+  },
+  {
+    "index": 62,
+    "source_id": "./bochum/376_5697",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00062.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00062.npy"
+  },
+  {
+    "index": 63,
+    "source_id": "./bochum/375_5706",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00063.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00063.npy"
+  },
+  {
+    "index": 64,
+    "source_id": "./bochum/381_5704",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00064.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00064.npy"
+  },
+  {
+    "index": 65,
+    "source_id": "./bochum/371_5698",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00065.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00065.npy"
+  },
+  {
+    "index": 66,
+    "source_id": "./bochum/374_5701",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00066.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00066.npy"
+  },
+  {
+    "index": 67,
+    "source_id": "./bochum/374_5706",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00067.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00067.npy"
+  },
+  {
+    "index": 68,
+    "source_id": "./bochum/378_5704",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00068.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00068.npy"
+  },
+  {
+    "index": 69,
+    "source_id": "./bochum/376_5703",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00069.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00069.npy"
+  },
+  {
+    "index": 70,
+    "source_id": "./bochum/380_5701",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00070.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00070.npy"
+  },
+  {
+    "index": 71,
+    "source_id": "./bochum/385_5703",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00071.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00071.npy"
+  },
+  {
+    "index": 72,
+    "source_id": "./bochum/370_5704",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00072.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00072.npy"
+  },
+  {
+    "index": 73,
+    "source_id": "./bochum/371_5701",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00073.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00073.npy"
+  },
+  {
+    "index": 74,
+    "source_id": "./bochum/373_5706",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00074.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00074.npy"
+  },
+  {
+    "index": 75,
+    "source_id": "./bochum/380_5700",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00075.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00075.npy"
+  },
+  {
+    "index": 76,
+    "source_id": "./bochum/381_5700",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00076.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00076.npy"
+  },
+  {
+    "index": 77,
+    "source_id": "./bochum/372_5699",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00077.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00077.npy"
+  },
+  {
+    "index": 78,
+    "source_id": "./bochum/373_5697",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00078.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00078.npy"
+  },
+  {
+    "index": 79,
+    "source_id": "./bochum/374_5700",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00079.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00079.npy"
+  },
+  {
+    "index": 80,
+    "source_id": "./bochum/378_5705",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00080.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00080.npy"
+  },
+  {
+    "index": 81,
+    "source_id": "./bochum/383_5704",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00081.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00081.npy"
+  },
+  {
+    "index": 82,
+    "source_id": "./bochum/372_5706",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00082.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00082.npy"
+  },
+  {
+    "index": 83,
+    "source_id": "./bochum/377_5708",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00083.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00083.npy"
+  },
+  {
+    "index": 84,
+    "source_id": "./bochum/379_5701",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00084.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00084.npy"
+  },
+  {
+    "index": 85,
+    "source_id": "./bochum/378_5698",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00085.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00085.npy"
+  },
+  {
+    "index": 86,
+    "source_id": "./bochum/380_5698",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00086.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00086.npy"
+  },
+  {
+    "index": 87,
+    "source_id": "./bochum/370_5707",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00087.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00087.npy"
+  },
+  {
+    "index": 88,
+    "source_id": "./bochum/378_5697",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00088.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00088.npy"
+  },
+  {
+    "index": 89,
+    "source_id": "./bochum/381_5705",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00089.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00089.npy"
+  },
+  {
+    "index": 90,
+    "source_id": "./bochum/377_5703",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00090.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00090.npy"
+  },
+  {
+    "index": 91,
+    "source_id": "./bochum/378_5700",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00091.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00091.npy"
+  },
+  {
+    "index": 92,
+    "source_id": "./bochum/369_5705",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00092.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00092.npy"
+  },
+  {
+    "index": 93,
+    "source_id": "./bochum/382_5702",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00093.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00093.npy"
+  },
+  {
+    "index": 94,
+    "source_id": "./bochum/368_5702",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00094.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00094.npy"
+  },
+  {
+    "index": 95,
+    "source_id": "./bochum/382_5707",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00095.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00095.npy"
+  },
+  {
+    "index": 96,
+    "source_id": "./bochum/378_5706",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00096.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00096.npy"
+  },
+  {
+    "index": 97,
+    "source_id": "./bochum/373_5699",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00097.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00097.npy"
+  },
+  {
+    "index": 98,
+    "source_id": "./bochum/374_5702",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00098.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00098.npy"
+  },
+  {
+    "index": 99,
+    "source_id": "./bochum/368_5705",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00099.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00099.npy"
+  },
+  {
+    "index": 100,
+    "source_id": "./bochum/379_5706",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00100.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00100.npy"
+  },
+  {
+    "index": 101,
+    "source_id": "./bochum/382_5703",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00101.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00101.npy"
+  },
+  {
+    "index": 102,
+    "source_id": "./bochum/374_5704",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00102.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00102.npy"
+  },
+  {
+    "index": 103,
+    "source_id": "./bochum/371_5697",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00103.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00103.npy"
+  },
+  {
+    "index": 104,
+    "source_id": "./bochum/384_5702",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00104.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00104.npy"
+  },
+  {
+    "index": 105,
+    "source_id": "./bochum/380_5702",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00105.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00105.npy"
+  },
+  {
+    "index": 106,
+    "source_id": "./bochum/377_5701",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00106.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00106.npy"
+  },
+  {
+    "index": 107,
+    "source_id": "./bochum/369_5702",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00107.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00107.npy"
+  },
+  {
+    "index": 108,
+    "source_id": "./bochum/379_5709",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00108.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00108.npy"
+  },
+  {
+    "index": 109,
+    "source_id": "./bochum/376_5702",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00109.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00109.npy"
+  },
+  {
+    "index": 110,
+    "source_id": "./bochum/371_5700",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00110.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00110.npy"
+  },
+  {
+    "index": 111,
+    "source_id": "./bochum/370_5705",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00111.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00111.npy"
+  },
+  {
+    "index": 112,
+    "source_id": "./bochum/374_5709",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00112.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00112.npy"
+  },
+  {
+    "index": 113,
+    "source_id": "./bochum/383_5706",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00113.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00113.npy"
+  },
+  {
+    "index": 114,
+    "source_id": "./bochum/376_5700",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00114.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00114.npy"
+  },
+  {
+    "index": 115,
+    "source_id": "./bochum/380_5705",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00115.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00115.npy"
+  },
+  {
+    "index": 116,
+    "source_id": "./bochum/376_5707",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00116.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00116.npy"
+  },
+  {
+    "index": 117,
+    "source_id": "./bochum/375_5705",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00117.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00117.npy"
+  },
+  {
+    "index": 118,
+    "source_id": "./bochum/384_5706",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00118.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00118.npy"
+  },
+  {
+    "index": 119,
+    "source_id": "./bochum/382_5706",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00119.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00119.npy"
+  },
+  {
+    "index": 120,
+    "source_id": "./bochum/373_5702",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00120.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00120.npy"
+  },
+  {
+    "index": 121,
+    "source_id": "./bochum/372_5697",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00121.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00121.npy"
+  },
+  {
+    "index": 122,
+    "source_id": "./bochum/370_5698",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00122.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00122.npy"
+  },
+  {
+    "index": 123,
+    "source_id": "./bochum/373_5701",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00123.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00123.npy"
+  },
+  {
+    "index": 124,
+    "source_id": "./bochum/382_5710",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00124.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00124.npy"
+  },
+  {
+    "index": 125,
+    "source_id": "./bochum/375_5698",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00125.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00125.npy"
+  },
+  {
+    "index": 126,
+    "source_id": "./bochum/376_5708",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00126.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00126.npy"
+  },
+  {
+    "index": 127,
+    "source_id": "./bochum/371_5707",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00127.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00127.npy"
+  },
+  {
+    "index": 128,
+    "source_id": "./bochum/374_5708",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00128.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00128.npy"
+  },
+  {
+    "index": 129,
+    "source_id": "./bochum/382_5708",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00129.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00129.npy"
+  },
+  {
+    "index": 130,
+    "source_id": "./bochum/381_5703",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00130.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00130.npy"
+  },
+  {
+    "index": 131,
+    "source_id": "./bochum/379_5703",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00131.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00131.npy"
+  },
+  {
+    "index": 132,
+    "source_id": "./bochum/382_5705",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00132.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00132.npy"
+  },
+  {
+    "index": 133,
+    "source_id": "./bochum/382_5704",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00133.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00133.npy"
+  },
+  {
+    "index": 134,
+    "source_id": "./bochum/383_5709",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00134.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00134.npy"
+  },
+  {
+    "index": 135,
+    "source_id": "./bochum/380_5703",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00135.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00135.npy"
+  },
+  {
+    "index": 136,
+    "source_id": "./bochum/370_5706",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00136.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00136.npy"
+  },
+  {
+    "index": 137,
+    "source_id": "./bochum/381_5702",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00137.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00137.npy"
+  },
+  {
+    "index": 138,
+    "source_id": "./bochum/372_5698",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00138.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00138.npy"
+  },
+  {
+    "index": 139,
+    "source_id": "./bochum/380_5699",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00139.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00139.npy"
+  },
+  {
+    "index": 140,
+    "source_id": "./bochum/376_5705",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00140.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00140.npy"
+  },
+  {
+    "index": 141,
+    "source_id": "./bochum/375_5704",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00141.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00141.npy"
+  },
+  {
+    "index": 142,
+    "source_id": "./bochum/384_5705",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00142.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00142.npy"
+  },
+  {
+    "index": 143,
+    "source_id": "./bochum/382_5709",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00143.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00143.npy"
+  },
+  {
+    "index": 144,
+    "source_id": "./bochum/370_5701",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00144.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00144.npy"
+  },
+  {
+    "index": 145,
+    "source_id": "./bochum/377_5706",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00145.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00145.npy"
+  },
+  {
+    "index": 146,
+    "source_id": "./bochum/375_5702",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00146.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00146.npy"
+  },
+  {
+    "index": 147,
+    "source_id": "./bochum/385_5705",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00147.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00147.npy"
+  },
+  {
+    "index": 148,
+    "source_id": "./bochum/380_5708",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00148.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00148.npy"
+  },
+  {
+    "index": 149,
+    "source_id": "./bochum/381_5707",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00149.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00149.npy"
+  },
+  {
+    "index": 150,
+    "source_id": "./bochum/371_5703",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00150.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00150.npy"
+  },
+  {
+    "index": 151,
+    "source_id": "./bochum/377_5698",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00151.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00151.npy"
+  },
+  {
+    "index": 152,
+    "source_id": "./bochum/378_5703",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00152.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00152.npy"
+  },
+  {
+    "index": 153,
+    "source_id": "./bochum/383_5701",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00153.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00153.npy"
+  },
+  {
+    "index": 154,
+    "source_id": "./bochum/371_5706",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00154.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00154.npy"
+  },
+  {
+    "index": 155,
+    "source_id": "./bochum/380_5706",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00155.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00155.npy"
+  },
+  {
+    "index": 156,
+    "source_id": "./bochum/369_5704",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00156.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00156.npy"
+  },
+  {
+    "index": 157,
+    "source_id": "./bochum/379_5700",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00157.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00157.npy"
+  },
+  {
+    "index": 158,
+    "source_id": "./bochum/372_5702",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00158.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00158.npy"
+  },
+  {
+    "index": 159,
+    "source_id": "./bochum/372_5700",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00159.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00159.npy"
+  },
+  {
+    "index": 160,
+    "source_id": "./bochum/381_5708",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00160.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00160.npy"
+  },
+  {
+    "index": 161,
+    "source_id": "./bochum/381_5701",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00161.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00161.npy"
+  },
+  {
+    "index": 162,
+    "source_id": "./bochum/375_5707",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00162.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00162.npy"
+  },
+  {
+    "index": 163,
+    "source_id": "./bochum/374_5697",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00163.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00163.npy"
+  },
+  {
+    "index": 164,
+    "source_id": "./bochum/382_5701",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00164.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00164.npy"
+  },
+  {
+    "index": 165,
+    "source_id": "./bochum/374_5707",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00165.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00165.npy"
+  },
+  {
+    "index": 166,
+    "source_id": "./bochum/376_5704",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00166.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00166.npy"
+  },
+  {
+    "index": 167,
+    "source_id": "./bochum/369_5701",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00167.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00167.npy"
+  },
+  {
+    "index": 168,
+    "source_id": "./bochum/375_5708",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00168.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00168.npy"
+  },
+  {
+    "index": 169,
+    "source_id": "./bochum/377_5702",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00169.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00169.npy"
+  },
+  {
+    "index": 170,
+    "source_id": "./bochum/375_5701",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00170.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00170.npy"
+  },
+  {
+    "index": 171,
+    "source_id": "./bochum/379_5702",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00171.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00171.npy"
+  },
+  {
+    "index": 172,
+    "source_id": "./bochum/378_5702",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00172.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00172.npy"
+  },
+  {
+    "index": 173,
+    "source_id": "./bochum/371_5702",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00173.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00173.npy"
+  },
+  {
+    "index": 174,
+    "source_id": "./bochum/371_5705",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00174.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00174.npy"
+  },
+  {
+    "index": 175,
+    "source_id": "./bochum/373_5705",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00175.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00175.npy"
+  },
+  {
+    "index": 176,
+    "source_id": "./bochum/371_5699",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00176.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00176.npy"
+  },
+  {
+    "index": 177,
+    "source_id": "./bochum/375_5700",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00177.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00177.npy"
+  },
+  {
+    "index": 178,
+    "source_id": "./bochum/372_5707",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00178.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00178.npy"
+  },
+  {
+    "index": 179,
+    "source_id": "./bochum/372_5704",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00179.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00179.npy"
+  },
+  {
+    "index": 180,
+    "source_id": "./bochum/377_5700",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00180.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00180.npy"
+  },
+  {
+    "index": 181,
+    "source_id": "./bochum/376_5699",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00181.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00181.npy"
+  },
+  {
+    "index": 182,
+    "source_id": "./bochum/372_5703",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00182.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00182.npy"
+  },
+  {
+    "index": 183,
+    "source_id": "./bochum/375_5709",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00183.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00183.npy"
+  },
+  {
+    "index": 184,
+    "source_id": "./coesfeld/366_5752",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00184.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00184.npy"
+  },
+  {
+    "index": 185,
+    "source_id": "./coesfeld/371_5753",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00185.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00185.npy"
+  },
+  {
+    "index": 186,
+    "source_id": "./coesfeld/375_5749",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00186.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00186.npy"
+  },
+  {
+    "index": 187,
+    "source_id": "./coesfeld/377_5750",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00187.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00187.npy"
+  },
+  {
+    "index": 188,
+    "source_id": "./coesfeld/378_5759",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00188.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00188.npy"
+  },
+  {
+    "index": 189,
+    "source_id": "./coesfeld/375_5751",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00189.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00189.npy"
+  },
+  {
+    "index": 190,
+    "source_id": "./coesfeld/368_5759",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00190.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00190.npy"
+  },
+  {
+    "index": 191,
+    "source_id": "./coesfeld/376_5749",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00191.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00191.npy"
+  },
+  {
+    "index": 192,
+    "source_id": "./coesfeld/367_5751",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00192.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00192.npy"
+  },
+  {
+    "index": 193,
+    "source_id": "./coesfeld/376_5759",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00193.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00193.npy"
+  },
+  {
+    "index": 194,
+    "source_id": "./coesfeld/380_5755",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00194.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00194.npy"
+  },
+  {
+    "index": 195,
+    "source_id": "./coesfeld/369_5748",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00195.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00195.npy"
+  },
+  {
+    "index": 196,
+    "source_id": "./coesfeld/371_5754",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00196.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00196.npy"
+  },
+  {
+    "index": 197,
+    "source_id": "./coesfeld/372_5746",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00197.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00197.npy"
+  },
+  {
+    "index": 198,
+    "source_id": "./coesfeld/375_5759",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00198.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00198.npy"
+  },
+  {
+    "index": 199,
+    "source_id": "./coesfeld/368_5753",
+    "rgb": "phase1\\geonrw\\cache\\rgb\\sample_00199.png",
+    "dem": "phase1\\geonrw\\cache\\dem\\sample_00199.npy"
+  }
+]

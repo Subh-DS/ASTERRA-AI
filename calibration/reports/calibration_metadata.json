@@ -1,0 +1,33 @@
+{
+    "system": "ASTERRA AI",
+    "product": "Metric DSM",
+    "calibration_method": "DEM-assisted DSM reconstruction",
+    "formula": "DSM = DTM + nDSM",
+    "vertical_calibration_enabled": false,
+    "vertical_calibration_method": "DEM-assisted DSM reconstruction",
+    "vertical_calibration_scale": null,
+    "vertical_calibration_offset": null,
+    "gcp_count": 0,
+    "gcp_source": null,
+    "gcp_mae_m": null,
+    "gcp_rmse_m": null,
+    "gcp_bias_m": null,
+    "gcp_r2": null,
+    "sampling_method": null,
+    "vertical_reference": "Inherited from source DEM",
+    "ndsm_source": "outputs\\asterra_tiled_inference\\JAX_Tile_004_nDSM_tiled.npy",
+    "dem_source": "calibration\\dem\\srtm\\JAX_Tile_004_SRTM.tif",
+    "reference_source": "datasets\\Urban3D\\train\\Inputs\\JAX_Tile_004_DSM.tif",
+    "output": "calibration\\outputs\\metric_dsm_srtm_v2.tif",
+    "crs": "EPSG:32617",
+    "resolution": [
+        0.5,
+        0.5
+    ],
+    "width": 2048,
+    "height": 2048,
+    "valid_pixels": 4155300,
+    "total_pixels": 4194304,
+    "valid_percentage": 99.07007217407227,
+    "created_utc": "2026-09-26T06:36:37.457242+00:00"
+}

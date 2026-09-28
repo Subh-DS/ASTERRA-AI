@@ -1,0 +1,60 @@
+{
+  "dataset": "emasquil/shadow-eo",
+  "aoi": "OMA_135",
+  "acquisition": "40",
+  "rgb_key": "pansharpened_he/OMA_135/OMA_135_40_rgb",
+  "dsm_key": "rdsm_max_compressed/OMA_135/OMA_135_USGS_LPC_NE_Eastern_UA_2016_LAS_2018_rdsm_max",
+  "rpc_key": "root_dir_ba/OMA_135/OMA_135_40_pan",
+  "target_semantics": "S-EO DSM-Max absolute elevation",
+  "not_ndsm": true,
+  "rgb_original_shape": [
+    1434,
+    1572,
+    3
+  ],
+  "dsm_original_shape": [
+    1001,
+    1000
+  ],
+  "dsm_crs": "PROJCRS[\"WGS 84 / UTM zone 14N\",BASEGEOGCRS[\"WGS 84\",ENSEMBLE[\"World Geodetic System 1984 ensemble\",MEMBER[\"World Geodetic System 1984 (Transit)\"],MEMBER[\"World Geodetic System 1984 (G730)\"],MEMBER[\"World Geodetic System 1984 (G873)\"],MEMBER[\"World Geodetic System 1984 (G1150)\"],MEMBER[\"World Geodetic System 1984 (G1674)\"],MEMBER[\"World Geodetic System 1984 (G1762)\"],MEMBER[\"World Geodetic System 1984 (G2139)\"],ELLIPSOID[\"WGS 84\",6378137,298.257223563,LENGTHUNIT[\"metre\",1]],ENSEMBLEACCURACY[2.0]],PRIMEM[\"Greenwich\",0,ANGLEUNIT[\"degree\",0.0174532925199433]]],CONVERSION[\"UTM zone 14N\",METHOD[\"Transverse Mercator\",ID[\"EPSG\",9807]],PARAMETER[\"Latitude of natural origin\",0,ANGLEUNIT[\"degree\",0.0174532925199433],ID[\"EPSG\",8801]],PARAMETER[\"Longitude of natural origin\",-99,ANGLEUNIT[\"degree\",0.0174532925199433],ID[\"EPSG\",8802]],PARAMETER[\"Scale factor at natural origin\",0.9996,SCALEUNIT[\"unity\",1],ID[\"EPSG\",8805]],PARAMETER[\"False easting\",500000,LENGTHUNIT[\"metre\",1],ID[\"EPSG\",8806]],PARAMETER[\"False northing\",0,LENGTHUNIT[\"metre\",1],ID[\"EPSG\",8807]],ID[\"EPSG\",16014]],CS[Cartesian,3],AXIS[\"(E)\",east,ORDER[1],LENGTHUNIT[\"metre\",1,ID[\"EPSG\",9001]]],AXIS[\"(N)\",north,ORDER[2],LENGTHUNIT[\"metre\",1,ID[\"EPSG\",9001]]],AXIS[\"ellipsoidal height (h)\",up,ORDER[3],LENGTHUNIT[\"metre\",1,ID[\"EPSG\",9001]]],USAGE[SCOPE[\"unknown\"],AREA[\"Between 102\u00b0W and 96\u00b0W, northern hemisphere between equator and 84\u00b0N, onshore and offshore. Canada - Manitoba; Nunavut; Saskatchewan. Mexico. United States (USA).\"],BBOX[0,-102,84,-96]],REMARK[\"Promoted to 3D from EPSG:32614\"]]",
+  "dsm_gdal_geotransform": [
+    753747.7451729546,
+    0.5,
+    0.0,
+    4576365.82836258,
+    0.0,
+    -0.5
+  ],
+  "dsm_rasterio_affine": [
+    0.5,
+    0.0,
+    753747.7451729546,
+    0.0,
+    -0.5,
+    4576365.82836258,
+    0.0,
+    0.0,
+    1.0
+  ],
+  "alignment_window": {
+    "x0": 0,
+    "x1": 1563,
+    "y0": 11,
+    "y1": 1434,
+    "width": 1563,
+    "height": 1423
+  },
+  "dsm_sample_step": 2,
+  "projected_points": 497238,
+  "target_valid_pixels": 2153487,
+  "target_valid_percentage": 96.82296464850153,
+  "target_min": 294.56414794921875,
+  "target_max": 344.4066467285156,
+  "target_mean": 307.13824462890625,
+  "target_std": 9.27542781829834,
+  "rpc_reference_check": {
+    "expected_row": 16.847,
+    "expected_col": 49.736
+  },
+  "warning": "The saved dsm_absolute.tif uses a local pixel-space transform for this alignment sample. The authoritative source georeferencing is the original S-EO DSM GeoTransform plus RPC."
+}

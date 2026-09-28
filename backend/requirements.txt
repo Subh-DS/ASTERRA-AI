@@ -1,0 +1,19 @@
+
+
+# API and worker runtime
+fastapi>=0.115,<1
+uvicorn[standard]>=0.30,<1
+python-multipart>=0.0.9
+pydantic>=2.7,<3
+
+# Existing ASTERRA inference/calibration/reconstruction stack
+numpy>=1.26,<3
+scipy>=1.11
+torch>=2.2
+rasterio>=1.3.10
+Pillow>=10
+trimesh>=4
+transformers>=4.40,<5
+
+# The project root requirements contain the remaining training utilities.
+-r ../requirements.txt
