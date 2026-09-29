@@ -21,7 +21,7 @@ from rasterio.windows import Window, from_bounds as window_from_bounds
 
 from ..segmentation import COLORS, NAMES, BUILDING, OTHER, VEGETATION, WATER
 from ..segmentation.engine import segment_rgb
-from .building_service import _area, _sample_heights
+from .building_service import _area, _building_evidence, _sample_heights
 
 
 def _normalise_rgb(data: np.ndarray) -> np.ndarray:
@@ -229,89 +229,171 @@ def _sample_ground(dsm, projected):
         )
         values = data.astype(np.float32).filled(np.nan)
         valid = np.isfinite(values) & ~np.ma.getmaskarray(data) & (values > -9990)
-        selected = values[inside & valid]
+        # The footprint contains roof/canopy tops. Use the surrounding annulus
+        # first so semantic context and inferred homes are anchored to the
+        # same bare-ground datum as OSM buildings.
+        outside = values[(~inside) & valid]
+        selected = outside if outside.size >= 3 else values[inside & valid]
         if selected.size:
-            return float(np.percentile(selected, 20))
+            return float(np.percentile(selected, 18))
         return None
     except (ValueError, rasterio.errors.RasterioIOError):
         return None
 
 
-def _class_regions(mask_path: Path, dsm_path: Path, *, max_regions=300, min_area_px=12):
+def _split_dense_building_shape(shape, mask_src, mask, transform, min_area_px):
+    """Split a connected settlement mask when separated roof cores exist.
+
+    Semantic masks often merge adjacent small homes along one-pixel contacts.
+    Eroding the merged component exposes independent roof cores; each core is
+    dilated back only within the original component.  A split is accepted only
+    when at least two substantial cores explain most of the source component,
+    so fields and unresolved mega-regions remain candidates for rejection.
+    """
+    try:
+        from scipy.ndimage import binary_dilation, binary_erosion, label
+
+        component = rasterize(
+            [(shape, 1)],
+            out_shape=mask.shape,
+            transform=transform,
+            fill=0,
+            all_touched=True,
+            dtype="uint8",
+        ).astype(bool) & (mask == BUILDING)
+        component_pixels = int(component.sum())
+        if component_pixels < max(96, int(min_area_px * 8)):
+            return [shape]
+
+        core = binary_erosion(component, structure=np.ones((3, 3), dtype=bool), iterations=1)
+        labels, count = label(core, structure=np.ones((3, 3), dtype=np.uint8))
+        if count < 2:
+            return [shape]
+
+        min_core = max(3, int(min_area_px * 0.35))
+        pieces = []
+        covered = np.zeros_like(component, dtype=bool)
+        for index in range(1, count + 1):
+            core_piece = labels == index
+            if int(core_piece.sum()) < min_core:
+                continue
+            piece = binary_dilation(core_piece, structure=np.ones((3, 3), dtype=bool), iterations=1) & component
+            if int(piece.sum()) < min_area_px:
+                continue
+            covered |= piece
+            for geometry, value in shapes(
+                piece.astype(np.uint8),
+                mask=piece,
+                transform=transform,
+                connectivity=8,
+            ):
+                if int(value) == 1:
+                    pieces.append(geometry)
+
+        if len(pieces) < 2 or int(covered.sum()) < int(component_pixels * 0.65):
+            return [shape]
+        return pieces
+    except (ImportError, TypeError, ValueError, rasterio.errors.RasterioIOError):
+        return [shape]
+
+
+def _class_regions(mask_path: Path, dsm_path: Path, *, raster_path: Path | None = None, max_regions=300, min_area_px=6):
     regions = []
     building_candidates = []
+    rejected_buildings = {}
+    source_rgb = None
+    if raster_path and Path(raster_path).exists():
+        try:
+            with rasterio.open(raster_path) as source:
+                source_rgb = _normalise_rgb(source.read())
+        except (OSError, ValueError, rasterio.errors.RasterioIOError):
+            source_rgb = None
     with rasterio.open(mask_path) as mask_src, rasterio.open(dsm_path) as dsm:
         if mask_src.width != dsm.width or mask_src.height != dsm.height:
-            return regions, building_candidates
+            return regions, building_candidates, rejected_buildings
         mask = mask_src.read(1)
         transform = mask_src.transform
-        for shape, value in shapes(mask, mask=mask != OTHER, transform=transform, connectivity=8):
+        pixel_area = abs(float(dsm.res[0] * dsm.res[1]))
+        min_area_m2 = max(4.0, pixel_area * 6.0)
+        simplify_tolerance = min(1.25, max(0.25, min(abs(float(dsm.res[0])), abs(float(dsm.res[1]))) * 0.35))
+        evidence_rgb = source_rgb if source_rgb is not None and source_rgb.shape[:2] == mask.shape else np.full((mask_src.height, mask_src.width, 3), 0.5, dtype=np.float32)
+        for source_shape, value in shapes(mask, mask=mask != OTHER, transform=transform, connectivity=8):
             class_id = int(value)
             if class_id == OTHER or class_id not in NAMES:
                 continue
-            ring = shape.get("coordinates", [[]])[0]
-            if len(ring) < 4:
-                continue
-            _projected_raw, pixels_raw = _project_ring(ring[:-1], mask_src)
-            pixels = _simplify_ring(pixels_raw, tolerance=1.25)
-            if len(pixels) < 3 or _area(pixels) < min_area_px:
-                continue
-            projected = [list(map(float, mask_src.transform * (point[0], point[1]))) for point in pixels]
-            ground = _sample_ground(dsm, projected)
-            if ground is None:
-                ground = float(dsm.read(1).mean())
-            region = {
-                "id": len(regions) + 1,
-                "class_id": class_id,
-                "class": NAMES[class_id],
-                "polygon": pixels,
-                "polygon_projected": projected,
-                "ground_elevation": float(ground),
-                "source": "semantic-segmentation",
-                "confidence": 0.55,
-                "geometry_quality": "cleaned-raster-component",
-            }
-            regions.append(region)
-            if class_id == BUILDING:
-                roof_ground = _sample_heights(dsm, projected)
-                sampled_ground, roof = roof_ground
-                if sampled_ground is not None:
-                    ground = float(sampled_ground)
-                # Semantic pixels are only a proposal.  Require measurable
-                # local relief before turning a region into an extruded
-                # building; otherwise bright roads/courtyards would become
-                # false 6 m blocks whenever the ML model is unavailable.
-                if roof is None or not np.isfinite(roof) or float(roof) - float(ground) < 1.8:
+            shapes_to_process = (
+                _split_dense_building_shape(source_shape, mask_src, mask, transform, min_area_px)
+                if class_id == BUILDING
+                else [source_shape]
+            )
+            for shape in shapes_to_process:
+                ring = shape.get("coordinates", [[]])[0]
+                if len(ring) < 4:
                     continue
-                measured_height = float(roof) - float(ground)
-                height = max(2.5, min(45.0, measured_height))
-                building_candidates.append({
-                    "id": 900000000 + len(building_candidates),
-                    "name": "Segmented building",
+                _projected_raw, pixels_raw = _project_ring(ring[:-1], mask_src)
+                pixels = _simplify_ring(pixels_raw, tolerance=simplify_tolerance)
+                if len(pixels) < 3 or _area(pixels) < min_area_px or _area(pixels) * pixel_area < min_area_m2:
+                    continue
+                projected = [list(map(float, mask_src.transform * (point[0], point[1]))) for point in pixels]
+                ground = _sample_ground(dsm, projected)
+                if ground is None:
+                    ground = float(dsm.read(1).mean())
+                region = {
+                    "id": len(regions) + 1,
+                    "class_id": class_id,
+                    "class": NAMES[class_id],
                     "polygon": pixels,
                     "polygon_projected": projected,
-                    "area_m2": _area(projected),
                     "ground_elevation": float(ground),
-                    "height": height,
-                    "roof_elevation": float(ground) + height,
-                    "height_source": "segmentation:dsm-sampled",
-                    "osm_tags": {"building": "segmentation"},
-                    "segmentation_class": NAMES[class_id],
-                    "geometry_profile": "standard",
-                    "profile_source": "semantic-footprint",
-                    "roof_surface_source": "pending-dsm-quality-gate",
-                    "roof_valid_fraction": 0.0,
-                    "geometry_quality": "candidate",
-                    "height_confidence": round(min(0.92, max(0.35, 0.55 + min(measured_height, 20.0) / 100.0)), 3),
                     "source": "semantic-segmentation",
                     "confidence": 0.55,
-                })
+                    "geometry_quality": "cleaned-raster-component" if len(shapes_to_process) == 1 else "split-roof-component",
+                }
+                regions.append(region)
+                if class_id == BUILDING:
+                    evidence = _building_evidence(dsm, dsm, evidence_rgb, projected, semantic=True, max_area_m2=2000.0)
+                    if not evidence.get("accepted"):
+                        reason = evidence.get("reason", "insufficient-roof-evidence")
+                        rejected_buildings[reason] = rejected_buildings.get(reason, 0) + 1
+                        continue
+                    sampled_ground = evidence.get("ground_elevation")
+                    roof = evidence.get("roof_elevation")
+                    if sampled_ground is not None:
+                        ground = float(sampled_ground)
+                    measured_height = float(roof) - float(ground)
+                    height = max(2.2 if _area(projected) <= 20.0 else 2.5, min(45.0, measured_height))
+                    building_candidates.append({
+                        "id": 900000000 + len(building_candidates),
+                        "name": "Segmented building",
+                        "polygon": pixels,
+                        "polygon_projected": projected,
+                        "area_m2": _area(projected),
+                        "ground_elevation": float(ground),
+                        "height": height,
+                        "roof_elevation": float(ground) + height,
+                        "height_source": "segmentation:dsm-sampled",
+                        "osm_tags": {"building": "segmentation"},
+                        "segmentation_class": NAMES[class_id],
+                        "geometry_profile": "flat",
+                        "roof_type": "approximate",
+                        "roof_plane_count": 0,
+                        "profile_source": "semantic-footprint",
+                        "roof_surface_source": "pending-dsm-quality-gate",
+                        "roof_valid_fraction": 0.0,
+                        "geometry_quality": "candidate",
+                        "height_confidence": round(min(0.92, max(0.35, 0.55 + min(measured_height, 20.0) / 100.0)), 3),
+                        "source": "semantic-segmentation",
+                        "confidence": 0.55,
+                        "roof_evidence": {key: value for key, value in evidence.items() if key not in {"accepted", "reason"}},
+                    })
+                if len(regions) >= max_regions:
+                    break
             if len(regions) >= max_regions:
                 break
-    return regions, building_candidates
+    return regions, building_candidates, rejected_buildings
 
 
-def add_semantic_features(environment: dict[str, Any], buildings: list[dict[str, Any]], mask_path: Path | None, dsm_path: Path, *, max_regions=300):
+def add_semantic_features(environment: dict[str, Any], buildings: list[dict[str, Any]], mask_path: Path | None, dsm_path: Path, *, raster_path: Path | None = None, max_regions=300):
     """Attach semantic polygons and conservatively add missing scene layers.
 
     OSM is preferred when present, but semantic evidence must still produce
@@ -322,9 +404,10 @@ def add_semantic_features(environment: dict[str, Any], buildings: list[dict[str,
     """
     environment = {**(environment or {})}
     environment.setdefault("semantic_regions", [])
+    environment.setdefault("exclusion_zones", [])
     if not mask_path or not mask_path.exists():
-        return environment, buildings, {"regions_count": 0, "building_candidates": 0, "approximate_tree_count": 0}
-    regions, candidates = _class_regions(mask_path, dsm_path, max_regions=max_regions)
+        return environment, buildings, {"regions_count": 0, "building_candidates": 0, "approximate_tree_count": 0, "rejected_buildings": {}}
+    regions, candidates, rejected_buildings = _class_regions(mask_path, dsm_path, raster_path=raster_path, max_regions=max_regions)
     environment["semantic_regions"] = regions
 
     environment.setdefault("water", [])
@@ -332,8 +415,6 @@ def add_semantic_features(environment: dict[str, Any], buildings: list[dict[str,
     environment.setdefault("trees", [])
     # OSM remains authoritative when present, but semantic regions must fill
     # every meaningful gap rather than only the first water/vegetation blob.
-    has_osm_water = bool(environment["water"])
-    has_osm_vegetation = bool(environment["landcover"])
     semantic_water_added = 0
     semantic_vegetation_added = 0
 
@@ -352,6 +433,29 @@ def add_semantic_features(environment: dict[str, Any], buildings: list[dict[str,
             previous = current
         return inside
 
+    def _overlaps_existing(polygon, features):
+        if len(polygon) < 3:
+            return False
+        center = (
+            sum(float(point[0]) for point in polygon) / len(polygon),
+            sum(float(point[1]) for point in polygon) / len(polygon),
+        )
+        for feature in features or []:
+            other = feature.get("polygon") or []
+            if len(other) < 3:
+                continue
+            if _inside(center, other):
+                return True
+            other_center = (
+                sum(float(point[0]) for point in other) / len(other),
+                sum(float(point[1]) for point in other) / len(other),
+            )
+            if _inside(other_center, polygon):
+                return True
+            if any(_inside((float(point[0]), float(point[1])), other) for point in polygon):
+                return True
+        return False
+
     try:
         with rasterio.open(dsm_path) as dsm:
             step_x = max(6, int(round(12.0 / max(abs(float(dsm.res[0])), 1e-6))))
@@ -367,7 +471,7 @@ def add_semantic_features(environment: dict[str, Any], buildings: list[dict[str,
                 projected = region.get("polygon_projected") or []
                 if len(polygon) < 3 or len(projected) < 3:
                     continue
-                if klass == "water" and not has_osm_water and semantic_water_added < 24:
+                if klass == "water" and not _overlaps_existing(polygon, environment["water"]) and semantic_water_added < 24:
                     environment["water"].append({
                         "id": -700000 - int(region["id"]),
                         "polygon": polygon,
@@ -380,7 +484,7 @@ def add_semantic_features(environment: dict[str, Any], buildings: list[dict[str,
                         "geometry_quality": region.get("geometry_quality", "cleaned-raster-component"),
                     })
                     semantic_water_added += 1
-                elif klass == "vegetation" and not has_osm_vegetation and semantic_vegetation_added < 32:
+                elif klass == "vegetation" and not _overlaps_existing(polygon, environment["landcover"]) and semantic_vegetation_added < 32:
                     environment["landcover"].append({
                         "id": -710000 - int(region["id"]),
                         "polygon": polygon,
@@ -492,6 +596,7 @@ def add_semantic_features(environment: dict[str, Any], buildings: list[dict[str,
         "regions_count": len(regions),
         "building_candidates": len(candidates),
         "approximate_tree_count": semantic_tree_count,
+        "rejected_buildings": rejected_buildings,
     }
 
 

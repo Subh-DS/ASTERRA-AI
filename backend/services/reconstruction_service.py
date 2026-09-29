@@ -14,6 +14,7 @@ def reconstruct(
     buildings=None,
     environment=None,
     source_gsd_m=None,
+    terrain_surface_path=None,
 ):
     return run_reconstruction(
         dsm_path=dsm_path,
@@ -26,4 +27,5 @@ def reconstruct(
         buildings=buildings,
         environment=environment,
         source_gsd_m=source_gsd_m,
+        terrain_surface_path=terrain_surface_path,
     )

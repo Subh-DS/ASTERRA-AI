@@ -12,8 +12,31 @@ from .services.calibration_service import run_calibration, run_gcp_only_calibrat
 from .services.dem_service import resolve_dem_info
 from .services.reconstruction_service import reconstruct
 from .services.imagery_service import aoi_payload, prepare_map_scene
-from .services.building_service import buildings_geojson, environment_geojson, fetch_map_features
+from .services.building_service import (
+    buildings_geojson,
+    environment_geojson,
+    fetch_map_features,
+    filter_buildings_by_evidence,
+    sanitize_environment_layers,
+    validate_scene_alignment,
+)
 from .services.segmentation_service import add_semantic_features, run_segmentation
+from visualization.terrain_surface import build_terrain_surface
+
+
+def _mean_resolution_m(value):
+    """Return a positive scalar GSD from scalar or X/Y resolution metadata."""
+    if value is None:
+        return None
+    if isinstance(value, (list, tuple)):
+        values = [_mean_resolution_m(item) for item in value]
+        values = [item for item in values if item is not None]
+        return (sum(values) / len(values)) if values else None
+    try:
+        result = float(value)
+    except (TypeError, ValueError):
+        return None
+    return result if result > 0 else None
 
 
 def _stage(store, job_id, name, state, progress, sub):
@@ -93,7 +116,7 @@ def run_pipeline(job_id, store: JobStore, settings):
             # This is the sensor's native GSD.  The clipped raster may be
             # resampled to the model minimum, so its GeoTIFF resolution is not
             # a measure of recoverable detail.
-            source_gsd_m = float(map_scene["resolution_m"])
+            source_gsd_m = _mean_resolution_m(map_scene["resolution_m"])
         coarse_map_surface = bool(source_gsd_m is not None and source_gsd_m > 5.0)
         # Sentinel-2 and similarly coarse scenes cannot resolve buildings. A
         # monocular nDSM prediction at this scale is mostly texture-driven
@@ -142,24 +165,43 @@ def run_pipeline(job_id, store: JobStore, settings):
         dsm_path = Path(calibration["output_path"])
         buildings = []
         building_info = {"enabled": False, "provider": "openstreetmap", "count": 0}
-        environment = {"roads": [], "water": [], "landcover": [], "trees": [], "semantic_regions": []}
+        environment = {"roads": [], "water": [], "landcover": [], "trees": [], "semantic_regions": [], "exclusion_zones": []}
         environment_info = {"enabled": False, "provider": "openstreetmap"}
         semantic_feature_info = {"regions_count": 0, "building_candidates": 0}
         if map_scene and (settings.buildings_enabled or settings.environment_enabled):
             _stage(store, job_id, "mesh", "active", 8, "loading buildings, roads, water, and trees")
-            buildings, building_info, environment, environment_info = fetch_map_features(
-                job["aoi"],
-                paths.source_raster,
-                dsm_path,
-                endpoint=settings.buildings_overpass_url,
-                timeout=settings.buildings_timeout,
-                max_buildings=settings.buildings_max if settings.buildings_enabled else 0,
-                max_features=settings.environment_max_features if settings.environment_enabled else 0,
-                max_trees=settings.environment_max_trees if settings.environment_enabled else 0,
-                min_area_m2=settings.buildings_min_area_m2,
-                source_gsd_m=source_gsd_m,
-                mask_path=paths.semantic_mask,
-            )
+            try:
+                buildings, building_info, environment, environment_info = fetch_map_features(
+                    job["aoi"],
+                    paths.source_raster,
+                    dsm_path,
+                    endpoint=settings.buildings_overpass_url,
+                    timeout=settings.buildings_timeout,
+                    max_buildings=settings.buildings_max if settings.buildings_enabled else 0,
+                    max_features=settings.environment_max_features if settings.environment_enabled else 0,
+                    max_trees=settings.environment_max_trees if settings.environment_enabled else 0,
+                    min_area_m2=settings.buildings_min_area_m2,
+                    source_gsd_m=source_gsd_m,
+                    mask_path=paths.semantic_mask,
+                    cache_root=(Path(getattr(settings, "runtime_root", paths.root.parent / "runtime")) / "osm_cache"),
+                )
+            except Exception as exc:
+                # Map enrichment is optional. A malformed cached feature or
+                # provider payload must never prevent the calibrated terrain
+                # and GLB from completing.
+                buildings = []
+                building_info = {
+                    "enabled": True,
+                    "provider": "openstreetmap",
+                    "count": 0,
+                    "warning": f"Map building features skipped: {str(exc)[:220]}",
+                }
+                environment = {"roads": [], "water": [], "landcover": [], "trees": [], "semantic_regions": [], "exclusion_zones": []}
+                environment_info = {
+                    "enabled": True,
+                    "provider": "openstreetmap",
+                    "warning": f"Map environment features skipped: {str(exc)[:220]}",
+                }
         # Semantic extraction is also useful for georeferenced uploads. OSM
         # remains preferred where it is available, while the deterministic
         # mask supplies separate evidence layers and bounded candidates.
@@ -169,6 +211,7 @@ def run_pipeline(job_id, store: JobStore, settings):
                 buildings,
                 paths.semantic_mask,
                 dsm_path,
+                raster_path=paths.source_raster,
             )
             environment_info = {
                 **environment_info,
@@ -176,6 +219,57 @@ def run_pipeline(job_id, store: JobStore, settings):
                 "semantic_building_candidates": semantic_feature_info["building_candidates"],
                 "semantic_approximate_tree_count": semantic_feature_info.get("approximate_tree_count", 0),
             }
+        try:
+            buildings, building_evidence_info = filter_buildings_by_evidence(
+                buildings,
+                paths.source_raster,
+                dsm_path,
+                environment,
+            )
+            if semantic_feature_info.get("rejected_buildings"):
+                for reason, count in semantic_feature_info["rejected_buildings"].items():
+                    building_evidence_info["rejection_reasons"][reason] = building_evidence_info["rejection_reasons"].get(reason, 0) + int(count)
+                building_evidence_info["rejected_count"] += sum(semantic_feature_info["rejected_buildings"].values())
+            environment, environment_overlap = sanitize_environment_layers(
+                buildings,
+                environment,
+                raster_path=paths.source_raster,
+                dsm_path=dsm_path,
+                clearance_m=1.0,
+            )
+            buildings, environment, alignment_report = validate_scene_alignment(
+                buildings,
+                environment,
+                paths.source_raster,
+            )
+        except Exception as exc:
+            buildings = []
+            building_evidence_info = {
+                "accepted_count": 0,
+                "rejected_count": 0,
+                "rejection_reasons": {},
+                "small_structure_count": 0,
+                "warning": f"Scene feature cleanup skipped: {str(exc)[:220]}",
+            }
+            environment = {"roads": [], "water": [], "landcover": [], "trees": [], "semantic_regions": [], "exclusion_zones": []}
+            environment_overlap = {"trees": 0, "landcover": 0, "water": 0, "roads": 0, "clearance_m": 1.0, "ground_normalized": 0}
+            alignment_report = {"checked": 0, "rejected": 0, "round_trip_failures": 0, "outside_aoi": 0}
+            environment_info = {
+                **environment_info,
+                "warning": f"Scene feature cleanup skipped: {str(exc)[:220]}",
+            }
+        environment_info = {
+            **environment_info,
+            "removed_inside_buildings": environment_overlap,
+            "roads_count": len(environment.get("roads") or []),
+            "water_count": len(environment.get("water") or []),
+            "landcover_count": len(environment.get("landcover") or []),
+            "trees_count": len(environment.get("trees") or []),
+            "exclusion_zones_count": len(environment.get("exclusion_zones") or []),
+            "ground_normalized": environment_overlap.get("ground_normalized", 0),
+            "building_clearance_m": environment_overlap.get("clearance_m", 1.0),
+            "scene_alignment": alignment_report,
+        }
         if map_scene or buildings or any(environment.values()):
             paths.buildings_geojson.write_text(
                 json.dumps(buildings_geojson(buildings, input_meta.get("crs")), indent=2),
@@ -191,10 +285,16 @@ def run_pipeline(job_id, store: JobStore, settings):
         if reconstruction_gsd_m is None:
             pixel_size = input_meta.get("pixel_size_m") or input_meta.get("resolution") or [None, None]
             try:
-                candidate_gsd = (float(pixel_size[0]) + float(pixel_size[1])) / 2.0
-                reconstruction_gsd_m = candidate_gsd if candidate_gsd > 0 else None
+                reconstruction_gsd_m = _mean_resolution_m(pixel_size)
             except (TypeError, ValueError, IndexError):
                 reconstruction_gsd_m = None
+        _stage(store, job_id, "mesh", "active", 18, "separating bare terrain from structures and vegetation")
+        terrain_surface = build_terrain_surface(
+            dsm_path,
+            paths.terrain_surface,
+            buildings=buildings,
+            environment=environment,
+        )
         reconstruction = reconstruct(
             dsm_path, paths.source_raster, paths.model_glb, paths.reconstruction_metadata,
             size=settings.mesh_size,
@@ -203,13 +303,14 @@ def run_pipeline(job_id, store: JobStore, settings):
             buildings=buildings,
             environment=environment,
             source_gsd_m=reconstruction_gsd_m,
+            terrain_surface_path=paths.terrain_surface,
         )
         write_preview_assets(paths.source_raster, dsm_path, paths.texture, paths.normal)
         _stage(store, job_id, "mesh", "done", 100, "GLB exported")
 
         pixel_size = input_meta.get("pixel_size_m") or input_meta.get("resolution") or [1.0, 1.0]
         try:
-            gsd_m = float((float(pixel_size[0]) + float(pixel_size[1])) / 2.0)
+            gsd_m = _mean_resolution_m(pixel_size)
         except (TypeError, ValueError, IndexError):
             gsd_m = None
         if source_gsd_m is not None:
@@ -233,7 +334,7 @@ def run_pipeline(job_id, store: JobStore, settings):
         has_environment = any(
             bool(values)
             for key, values in environment.items()
-            if key != "semantic_regions"
+            if key not in {"semantic_regions", "exclusion_zones"}
         )
         has_features = bool(buildings) or has_environment
         approximate_geometry_count = sum(
@@ -269,6 +370,7 @@ def run_pipeline(job_id, store: JobStore, settings):
         }
         for warning in (
             building_info.get("warning"),
+            building_evidence_info.get("warning"),
             environment_info.get("warning"),
             environment_info.get("semantic_warning"),
         ):
@@ -276,9 +378,9 @@ def run_pipeline(job_id, store: JobStore, settings):
                 quality_warnings.append(warning)
         reconstruction_metadata = {
             **reconstruction["metadata"],
-            "mode": "dsm-terrain",
-            "has_glb": True,
-            "glb_url": f"/api/jobs/{job_id}/export/model.glb",
+            "mode": "structure-aware",
+            "has_glb": bool(paths.model_glb.exists()),
+            "glb_url": f"/api/jobs/{job_id}/export/model.glb" if paths.model_glb.exists() else None,
             "building_detection": (
                 f"{building_info.get('provider', 'mapped')} footprints + metric/approximate heights"
                 if buildings
@@ -291,12 +393,23 @@ def run_pipeline(job_id, store: JobStore, settings):
             "quality_warnings": quality_warnings,
             "calibration_surface_mode": calibration_metadata.get("surface_mode"),
             "building_source": building_info,
+            "building_evidence": building_evidence_info,
+            "accepted_building_count": building_evidence_info.get("accepted_count", len(buildings)),
+            "rejected_building_count": building_evidence_info.get("rejected_count", 0),
+            "rejection_reasons": building_evidence_info.get("rejection_reasons", {}),
+            "small_structure_count": building_evidence_info.get("small_structure_count", 0),
             "has_buildings": bool(buildings),
             "has_geojson": paths.buildings_geojson.exists(),
             "segmentation": segmentation_info,
             "has_mask": paths.semantic_preview.exists(),
             "mask_url": f"/api/jobs/{job_id}/export/mask.png" if paths.semantic_preview.exists() else None,
             "environment": environment_info,
+            "sports_ground_detection": {
+                "count": len(environment.get("exclusion_zones") or []),
+                "sources": sorted({str(item.get("source") or "unknown") for item in environment.get("exclusion_zones") or []}),
+                "hidden_terrain_mask": True,
+            },
+            "feature_intersection_counts": reconstruction.get("metadata", {}).get("geometry_qa", {}),
             "has_environment": has_environment,
             "has_environment_geojson": paths.environment_geojson.exists(),
             "surface_mode": reconstruction.get("metadata", {}).get("reconstruction", {}).get("surface_mode", "hybrid-dsm-semantic"),
@@ -304,6 +417,9 @@ def run_pipeline(job_id, store: JobStore, settings):
             "roof_approximate": reconstruction.get("metadata", {}).get("reconstruction", {}).get("roof_approximate", 0),
             "semantic_backend": segmentation_info.get("model") or ("deterministic-rgb-fallback" if segmentation_info.get("fallback") else "unknown"),
             "semantic_layer_counts": reconstruction.get("metadata", {}).get("environment_counts", {}).get("semantic_layers", {}),
+            "terrain_surface": terrain_surface,
+            "terrain_url": f"/api/jobs/{job_id}/terrain.bin",
+            "display_scale": {"default": 1.75, "min": 0.2, "max": 10.0, "metric_source_unchanged": True},
         }
         source = {"type": "upload", "name": job.get("source_name")}
         georeference = {
@@ -350,7 +466,7 @@ def run_pipeline(job_id, store: JobStore, settings):
             "environment_source": environment_info,
             "segmentation": segmentation_info,
             "georeference": georeference,
-            "artifacts": {"dsm": str(dsm_path), "glb": str(paths.model_glb), "metadata": str(paths.root / "metadata.json"), "environment": str(paths.environment_geojson), "mask": str(paths.semantic_preview)},
+            "artifacts": {"dsm": str(dsm_path), "terrain_surface": str(paths.terrain_surface), "glb": str(paths.model_glb), "metadata": str(paths.root / "metadata.json"), "environment": str(paths.environment_geojson), "mask": str(paths.semantic_preview)},
         }
         aggregate_path = paths.root / "metadata.json"
         aggregate_path.write_text(json.dumps(aggregate, indent=2, default=str), encoding="utf-8")
@@ -359,7 +475,7 @@ def run_pipeline(job_id, store: JobStore, settings):
             "width": aggregate["width"], "height": aggregate["height"], "stats": aggregate["stats"],
             "model": aggregate["model"], "metadata": aggregate["metadata"], "calibration": aggregate["calibration"], "quality": aggregate["quality"], "reconstruction": aggregate["reconstruction"], "buildings": aggregate["buildings"], "building_source": aggregate["building_source"], "environment": aggregate["environment"], "environment_source": aggregate["environment_source"],
             "source": aggregate["source"], "georeference": aggregate["georeference"],
-            "dsm_url": f"/api/jobs/{job_id}/export/dsm.tif", "glb_url": f"/api/jobs/{job_id}/export/model.glb",
+            "dsm_url": f"/api/jobs/{job_id}/export/dsm.tif", "terrain_url": f"/api/jobs/{job_id}/terrain.bin", "terrain_tif_url": f"/api/jobs/{job_id}/export/terrain_surface.tif", "glb_url": f"/api/jobs/{job_id}/export/model.glb" if paths.model_glb.exists() else None,
             "metadata_url": f"/api/jobs/{job_id}/export/metadata.json", "texture_url": f"/files/{job_id}/texture.jpg",
             "normal_url": f"/files/{job_id}/normal.png", "mask_url": aggregate["reconstruction"].get("mask_url"), "file_token": job["file_token"],
         }

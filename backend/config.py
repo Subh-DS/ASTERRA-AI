@@ -60,7 +60,7 @@ class Settings:
     buildings_overpass_url: str | None = "https://overpass-api.de/api/interpreter,https://overpass.kumi.systems/api/interpreter"
     buildings_timeout: float = 20.0
     buildings_max: int = 500
-    buildings_min_area_m2: float = 20.0
+    buildings_min_area_m2: float = 4.0
     environment_enabled: bool = True
     environment_max_features: int = 1200
     environment_max_trees: int = 500
@@ -75,6 +75,7 @@ class Settings:
     # default fails fast into the deterministic RGB fallback; operators can
     # opt into remote model downloads explicitly.
     segmentation_local_only: bool = True
+    segmentation_cache_dir: Path | None = None
     map_mock: bool = False
     preload_model: bool = False
     require_file_token: bool = False
@@ -92,6 +93,7 @@ class Settings:
         dem_value = os.getenv("ASTERRA_DEM_PATH")
         dem_cache_value = os.getenv("ASTERRA_DEM_CACHE")
         imagery_cache_value = os.getenv("ASTERRA_IMAGERY_CACHE")
+        segmentation_cache_value = os.getenv("ASTERRA_SEGMENTATION_CACHE")
         return cls(
             project_root=project_root,
             backend_root=backend_root,
@@ -129,7 +131,7 @@ class Settings:
             buildings_overpass_url=os.getenv("ASTERRA_BUILDINGS_OVERPASS_URL", "https://overpass-api.de/api/interpreter,https://overpass.kumi.systems/api/interpreter") or None,
             buildings_timeout=float(os.getenv("ASTERRA_BUILDINGS_TIMEOUT", "20")),
             buildings_max=max(1, int(os.getenv("ASTERRA_BUILDINGS_MAX", "500"))),
-            buildings_min_area_m2=max(1.0, float(os.getenv("ASTERRA_BUILDINGS_MIN_AREA_M2", "20"))),
+            buildings_min_area_m2=max(1.0, float(os.getenv("ASTERRA_BUILDINGS_MIN_AREA_M2", "4"))),
             environment_enabled=_bool("ASTERRA_ENVIRONMENT_ENABLED", True),
             environment_max_features=max(1, int(os.getenv("ASTERRA_ENVIRONMENT_MAX_FEATURES", "1200"))),
             environment_max_trees=max(1, int(os.getenv("ASTERRA_ENVIRONMENT_MAX_TREES", "500"))),
@@ -143,6 +145,7 @@ class Settings:
             segmentation_max_side=max(256, int(os.getenv("ASTERRA_SEGMENTATION_MAX_SIDE", "1024"))),
             segmentation_timeout_seconds=max(1.0, float(os.getenv("ASTERRA_SEGMENTATION_TIMEOUT", "12"))),
             segmentation_local_only=_bool("ASTERRA_SEGMENTATION_LOCAL_ONLY", True),
+            segmentation_cache_dir=Path(segmentation_cache_value).resolve() if segmentation_cache_value else (backend_root / "runtime" / "segmentation_cache"),
             map_mock=_bool("DW_MAP_MOCK", False),
             preload_model=_bool("ASTERRA_PRELOAD_MODEL", False),
             require_file_token=_bool("ASTERRA_REQUIRE_FILE_TOKEN", False),

@@ -36,10 +36,6 @@ body {
 ::-webkit-scrollbar-track {
   background: transparent;
 }
-html {
-  scrollbar-width: thin;
-  scrollbar-color: var(--contour) transparent;
-}
 
 :focus-visible {
   outline: 1px solid var(--signal);
@@ -538,7 +534,7 @@ textarea {
 
 .rail {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(4, 1fr);
   gap: 0;
   border: 1px solid var(--contour-dim);
   background: var(--panel);
@@ -551,8 +547,6 @@ textarea {
   padding: 28px 24px 24px;
   border-right: 1px solid var(--contour-dim);
   min-height: 300px;
-  min-width: 0;
-  overflow: hidden;
   transition: background 300ms ease;
 }
 .station:last-child {
@@ -750,21 +744,6 @@ textarea {
 .topbar::-webkit-scrollbar {
   display: none;
 }
-.topbar::after {
-  content: '';
-  position: absolute;
-  right: 0;
-  top: 0;
-  bottom: 0;
-  width: 40px;
-  background: linear-gradient(to right, transparent, rgba(5, 9, 12, 0.66));
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 200ms ease;
-}
-.topbar:hover::after {
-  opacity: 1;
-}
 .topbar > * {
   pointer-events: auto;
   flex-shrink: 0;
@@ -847,7 +826,8 @@ textarea {
   border: 1px solid var(--contour-dim);
   border-radius: var(--r-4);
   padding: 6px;
-  /* Tooltips use position: fixed to avoid clipping */
+  /* Tooltips overflow to the right — never clip them. */
+  overflow: visible;
 }
 .rail-btn {
   width: 38px;
@@ -1247,7 +1227,7 @@ textarea {
   /* Reserve the bottom HUD stack (meta-hud + compass): on short viewports
      the rail scrolls internally instead of sliding behind those panels and
      the Snapshot button getting covered. Tooltips yield to usability. */
-  max-height: calc(100% - 68px - 300px);
+  max-height: calc(100% - 68px - 330px);
   overflow-y: auto;
   /* The vertical scrollbar only appears on short viewports — keep it slim
      and themed so it never reads as a stray beige bar. */
@@ -1593,7 +1573,7 @@ textarea {
 .loading-overlay {
   position: fixed;
   left: 50%;
-  bottom: 100px;
+  bottom: 28px;
   transform: translateX(-50%);
   z-index: 50;
   background: transparent;
@@ -2194,17 +2174,42 @@ textarea {
 }
 .layerbox {
   position: absolute;
-  top: 76px;
-  left: 12px;
-  z-index: 10;
+  top: 58px;
+  left: 76px;
+  z-index: 9;
   display: flex;
   flex-direction: column;
   gap: 6px;
+  width: min(360px, calc(100vw - 96px));
+  box-sizing: border-box;
   padding: 10px 12px;
   background: var(--scrim);
   border: 1px solid var(--contour-dim);
   border-radius: var(--r-4);
 }
+.layer-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 28px;
+  width: 100%;
+  min-width: 0;
+  padding: 2px 0;
+  border: 0;
+  background: transparent;
+  color: var(--paper);
+  font: inherit;
+  font-size: var(--t-12);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.layer-toggle:hover { color: var(--signal); }
+.layer-toggle:focus-visible {
+  outline: 1px solid var(--signal);
+  outline-offset: 3px;
+}
+.layerbox.collapsed { gap: 0; }
 .layer-row {
   display: flex;
   align-items: center;
@@ -2216,6 +2221,12 @@ textarea {
 .layer-note {
   font-size: var(--t-12);
   color: var(--paper-dim);
+}
+@media (max-width: 720px) {
+  .layerbox {
+    left: 68px;
+    width: calc(100vw - 80px);
+  }
 }
 .building-card {
   position: absolute;
@@ -2305,18 +2316,6 @@ textarea {
 .hz-sev button.on { background: rgba(79, 217, 196, .16); border-color: var(--signal); }
 .hz-run { width: 100%; padding: 10px; font-weight: 600; border-radius: var(--r-4); border: 0; cursor: pointer; background: var(--elevation); color: var(--on-elevation); }
 .hz-run:disabled { opacity: .5; cursor: wait; }
-.hz-spinner {
-  display: inline-block;
-  width: 14px;
-  height: 14px;
-  border: 2px solid rgba(255,255,255,0.3);
-  border-top-color: #fff;
-  border-radius: 50%;
-  animation: hz-spin 0.8s linear infinite;
-  margin-right: 8px;
-  vertical-align: middle;
-}
-@keyframes hz-spin { to { transform: rotate(360deg); } }
 .hz-ghost { padding: 7px; border-radius: var(--r-4); border: 1px solid var(--asterra-line-strong); background: transparent; color: inherit; cursor: pointer; }
 .hz-note { font-size: 12px; opacity: .7; margin: 0; }
 .hz-error { color: var(--alert); font-size: 13px; }

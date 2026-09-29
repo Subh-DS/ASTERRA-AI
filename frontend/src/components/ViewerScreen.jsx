@@ -69,26 +69,31 @@ export default function ViewerScreen() {
   const setPresentation = useApp((s) => s.setPresentation)
   const setViewer = useApp((s) => s.setViewer)
   const setBanner = useApp((s) => s.setBanner)
-  const [zVal, setZVal] = useState(1.2)
+  const [zVal, setZVal] = useState(1.75)
   // Twin-birth sequence: played once per reconstruction when the mesh first
   // opens — splash, darkness emergence (engine), staged HUD reveal.
   const [twinBorn, setTwinBorn] = useState(true)
   const [birthSplash, setBirthSplash] = useState(false)
   const birthShownRef = useRef(new Set())
-  // Phase 9: opt-in structure view (GLB). TerrainViewer stays the default.
-  const structAvail = !!(dsm?.reconstruction?.has_glb || dsm?.reconstruction?.glb_url)
+  // A completed GLB is the canonical structure-aware scene. Older jobs used
+  // the dsm-terrain mode label even though their GLB was already valid, so
+  // availability is based on the artifact contract instead of that label.
+  const structAvail = !!(dsm && !dsm.offline && dsm.reconstruction?.has_glb && (dsm.reconstruction?.glb_url || dsm.glb_url))
   const [structMode, setStructMode] = useState(false)
   const [structLayers, setStructLayers] = useState([])
+  const [layersOpen, setLayersOpen] = useState(true)
   const [structError, setStructError] = useState(null)
   const [pickedId, setPickedId] = useState(null)
   const structContainerRef = useRef(null)
   const structApiRef = useRef(null)
+  const [structApi, setStructApi] = useState(null)
+  const activeApi = structMode && structApi ? structApi : api
 
   useEffect(() => {
-    setStructMode(false)
+    setStructMode(!!structAvail)
     setPickedId(null)
     setStructError(null)
-  }, [dsmLoadKey])
+  }, [dsmLoadKey, structAvail])
 
   useEffect(() => {
     if (!dsmLoadKey) return
@@ -113,34 +118,52 @@ export default function ViewerScreen() {
     if (!structMode || !structAvail || !structContainerRef.current || !dsm) return
     setStructError(null)
     const v = new StructureViewer(structContainerRef.current, {
+      legacyZUp: dsm.reconstruction?.coordinate_system !== 'Local Y-up mesh coordinates',
+      gridW: dsm.width,
+      gridH: dsm.height,
+      pixelSizeM: dsm.pixelSizeM,
+      sceneAlignment: dsm.reconstruction?.scene_alignment,
+      verticalOrigin: dsm.reconstruction?.vertical_origin_m ?? dsm.metadata?.vertical_origin_m ?? dsm.stats?.min ?? 0,
+      maxH: dsm.stats?.max ?? dsm.reconstruction?.vertical_origin_m ?? 1,
       onPick: (id) => setPickedId(id),
       onLoad: (info) => {
         if (info.ok) setStructLayers(info.groups)
-        else setStructError(info.error || '3D scene failed to load')
+        else {
+          setStructError(info.error || '3D scene failed to load')
+          setStructMode(false)
+        }
       },
     })
     structApiRef.current = v
-    v.load(`${API_URL}/api/jobs/${dsm.id}/export/model.glb`)
+    setStructApi(v)
+    const glbPath = dsm.reconstruction?.glb_url || dsm.glb_url || `/api/jobs/${dsm.id}/export/model.glb`
+    const token = dsm.fileToken ? `?token=${encodeURIComponent(dsm.fileToken)}` : ''
+    v.load(`${API_URL}${glbPath}${glbPath.includes('?') ? '&' : token ? '?' : ''}${token ? `token=${encodeURIComponent(dsm.fileToken)}` : ''}`)
+    v.setDisplayScale?.(zVal)
     return () => {
       v.dispose()
       structApiRef.current = null
+      setStructApi(null)
     }
   }, [structMode, structAvail, dsmLoadKey])
 
   useEffect(() => {
+    useApp.getState().setViewerApi(activeApi)
+    return () => {
+      if (useApp.getState().viewerApi === activeApi) useApp.getState().setViewerApi(null)
+    }
+  }, [activeApi])
+
+  useEffect(() => {
     if (!containerRef.current) return
     const caps = TIER_CAPS[tier.resolved] || TIER_CAPS.high
-    const initialZScale = 1.2
+    const initialZScale = 1.75
     const v = new TerrainViewer(containerRef.current, {
       tier: tier.resolved,
       caps,
       reducedMotion: reduced,
       revealedForJobId: useApp.getState().dsm?.id ?? null,
       zScale: initialZScale,
-      onPick: (id) => setPickedId(id),
-      onLoad: (info) => {
-        if (info.ok) setStructLayers(info.groups || [])
-      },
       onFpsDrop: (avg) => {
         // Stability-first: do NOT auto-demote tier by disposing the viewer.
         // A transient render stall is reported as a banner only; if the user
@@ -171,6 +194,7 @@ export default function ViewerScreen() {
   useEffect(() => {
     if (!api) return
     api.setZScale(zVal)
+    structApiRef.current?.setDisplayScale?.(zVal)
   }, [api, zVal])
 
   useEffect(() => {
@@ -182,12 +206,14 @@ export default function ViewerScreen() {
 
   useEffect(() => {
     api?.setTheme(themeArg)
-  }, [api, themeArg])
+    structApi?.setTheme?.(themeArg)
+  }, [api, structApi, themeArg])
 
   const onZChange = (v) => {
     setZVal(v)
     setViewer({ zScale: v })
     api?.setZScale(v)
+    structApiRef.current?.setDisplayScale?.(v)
   }
 
   useEffect(() => {
@@ -204,44 +230,44 @@ export default function ViewerScreen() {
       }
 
       if (action === 'reset') {
-        api?.resetView()
+        activeApi?.resetView()
       } else if (action === 'export') {
         setViewer({ panelOpen: viewer.panelOpen === 'settings' ? null : 'settings' })
       } else if (action === 'assistant') {
         useApp.getState().setAssistantOpen(!useApp.getState().assistantOpen)
       } else if (action === 'clearMeasure') {
-        api?.clearMeasure()
+        activeApi?.clearMeasure()
       } else if (action === 'colorMode') {
         const order = ['rgb', 'elevation', 'hybrid', 'wire']
         const next = order[(order.indexOf(viewer.colorMode) + 1) % order.length]
         setViewer({ colorMode: next })
-        api?.setColorMode(next)
+        activeApi?.setColorMode(next)
       } else if (typeof action === 'function') {
         const patch = action()
         if (patch === 'reset') {
-          api?.resetView()
+          activeApi?.resetView()
         } else if (typeof patch === 'object') {
           setViewer(patch)
           Object.entries(patch).forEach(([k, v]) => {
-            if (k === 'mode') api?.setMode(v)
-            else if (k === 'hillshade') api?.setHillshade(v)
-            else if (k === 'slopeView') api?.setSlopeView(v)
-            else if (k === 'isolines') api?.setIsolines?.(v)
+            if (k === 'mode') activeApi?.setMode(v)
+            else if (k === 'hillshade') activeApi?.setHillshade(v)
+            else if (k === 'slopeView') activeApi?.setSlopeView(v)
+            else if (k === 'isolines') activeApi?.setIsolines?.(v)
           })
         }
       } else if (typeof action === 'object') {
         setViewer(action)
         Object.entries(action).forEach(([k, v]) => {
-          if (k === 'mode') api?.setMode(v)
-          else if (k === 'hillshade') api?.setHillshade(v)
-          else if (k === 'slopeView') api?.setSlopeView(v)
-          else if (k === 'isolines') api?.setIsolines?.(v)
+          if (k === 'mode') activeApi?.setMode(v)
+          else if (k === 'hillshade') activeApi?.setHillshade(v)
+          else if (k === 'slopeView') activeApi?.setSlopeView(v)
+          else if (k === 'isolines') activeApi?.setIsolines?.(v)
         })
       }
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [api, viewer, showShortcuts])
+  }, [activeApi, viewer, showShortcuts])
 
   const openPanel = (name) => {
     if (name && useApp.getState().assistantOpen) useApp.getState().setAssistantOpen(false)
@@ -304,7 +330,7 @@ export default function ViewerScreen() {
           </>
         )}
         <span className="hud-chip mono view-chip" title="Current camera and scene view">
-          {(viewer.mode || 'orbit').toUpperCase()} · {structMode ? 'STRUCTURES' : 'SCENE'}
+          {(viewer.mode || 'orbit').toUpperCase()} · {structMode ? 'STRUCTURES' : 'TERRAIN'}
         </span>
         <button className="back-link" onClick={() => useApp.getState().setScreen('progress')}>
           ← back
@@ -370,9 +396,9 @@ export default function ViewerScreen() {
         </button>
       </div>
 
-      <LeftRail viewerApi={api} />
+      <LeftRail viewerApi={activeApi} />
 
-      <CameraDock viewerApi={api} />
+      <CameraDock viewerApi={activeApi} />
 
       <div className="display-stack" aria-label="Display controls">
         <div className="viewswitch" role="tablist" aria-label="Scene view">
@@ -382,7 +408,7 @@ export default function ViewerScreen() {
             className={!structMode ? 'active' : ''}
             onClick={() => setStructMode(false)}
           >
-            SCENE
+            TERRAIN
           </button>
           <button
             role="tab"
@@ -418,22 +444,32 @@ export default function ViewerScreen() {
         </div>
       </div>
 
-      {(structMode || structLayers.length > 0) && (
-        <div className="layerbox" aria-label="Scene layers">
-          {structLayers.map((l) => (
+      {structMode && (
+        <div className={`layerbox${layersOpen ? '' : ' collapsed'}`} aria-label="Scene layers">
+          <button
+            type="button"
+            className="layer-toggle"
+            aria-expanded={layersOpen}
+            onClick={() => setLayersOpen((open) => !open)}
+          >
+            <span>Metric geometry</span>
+            <span aria-hidden="true">{layersOpen ? '−' : '+'}</span>
+          </button>
+          {layersOpen && (
+            <>
+          {structLayers.filter((l) => l.id !== 'SEGMENTATION').map((l) => (
             <label key={l.id} className="layer-row">
               <input
                 type="checkbox"
                 defaultChecked
-                onChange={(e) => {
-                  const target = structMode ? structApiRef.current : api
-                  target?.setLayerVisible(l.id, e.target.checked)
-                }}
+                onChange={(e) => structApiRef.current?.setLayerVisible(l.id, e.target.checked)}
               />
               {l.label} <span className="mono">×{l.count}</span>
             </label>
           ))}
-          <span className="mono layer-note">separate scene layers · click a building to inspect</span>
+          <span className="mono layer-note">metric geometry · click a building to inspect</span>
+            </>
+          )}
         </div>
       )}
 
@@ -450,10 +486,10 @@ export default function ViewerScreen() {
       )}
 
       {dsm && (
-        <MetaHud dsm={dsm} viewerApi={api} />
+        <MetaHud dsm={dsm} viewerApi={activeApi} />
       )}
 
-      <HudOverlays viewerApi={api} />
+      <HudOverlays viewerApi={activeApi} />
 
       {showShortcuts && (
         <div className="shortcuts-panel" role="dialog" aria-label="Keyboard shortcuts">

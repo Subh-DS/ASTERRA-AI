@@ -35,19 +35,27 @@ export default function MetaHud({ dsm, viewerApi }) {
   if (g0 != null && g1 != null && g0 !== g1) gsd = `${g0} × ${g1} m`
   else if (g0 != null) gsd = `${g0} m`
 
-  let elev = viewerApi ? 'Loading…' : '—'
+  let elev = '—'
   try {
-    const hm = viewerApi?.getHeightMapping?.()
-    if (hm && Number.isFinite(hm.minH) && Number.isFinite(hm.maxH)) {
-      elev = `${fmtRange(hm.minH, unit)} → ${fmtRange(hm.maxH, unit)}`
+    // Source statistics are raw DSM values; the viewer mapping can be the
+    // visualization-only bare-earth surface.
+    const rawMin = Number(dsm.stats?.min)
+    const rawMax = Number(dsm.stats?.max)
+    if (Number.isFinite(rawMin) && Number.isFinite(rawMax)) {
+      elev = `${fmtRange(rawMin, unit)} → ${fmtRange(rawMax, unit)}`
+    } else {
+      const hm = viewerApi?.getHeightMapping?.()
+      if (hm && Number.isFinite(hm.minH) && Number.isFinite(hm.maxH)) {
+        elev = `${fmtRange(hm.minH, unit)} → ${fmtRange(hm.maxH, unit)}`
+      }
     }
   } catch {
     /* mapping unavailable before first load */
   }
 
-  let cam = viewerApi ? 'Loading…' : '—'
+  let cam = '—'
   try {
-    cam = viewerApi?.getCamRange?.()?.label || 'Loading…'
+    cam = viewerApi?.getCamRange?.()?.label || '—'
   } catch {
     /* camera not ready */
   }

@@ -3,8 +3,10 @@ import json
 from pathlib import Path
 
 import numpy as np
+import rasterio
 import trimesh
 from rasterio.features import geometry_mask
+from trimesh import repair as trimesh_repair
 from trimesh.visual.material import SimpleMaterial
 
 try:
@@ -20,6 +22,29 @@ def _ring_xy(building, origin_x, origin_y):
     if len(polygon) < 3:
         return []
     ring = [(float(point[0]) - origin_x, float(point[1]) - origin_y) for point in polygon]
+    # Raster-derived polygons frequently contain repeated and almost-collinear
+    # points.  Removing them before ear clipping prevents self-intersections
+    # and skinny triangles that read as malformed building slabs in WebGL.
+    clean = []
+    for point in ring:
+        if not clean or np.hypot(point[0] - clean[-1][0], point[1] - clean[-1][1]) > 1e-5:
+            clean.append(point)
+    if len(clean) > 1 and np.hypot(clean[0][0] - clean[-1][0], clean[0][1] - clean[-1][1]) < 1e-5:
+        clean.pop()
+    changed = True
+    while changed and len(clean) > 3:
+        changed = False
+        reduced = []
+        for index, point in enumerate(clean):
+            prev = clean[index - 1]
+            nxt = clean[(index + 1) % len(clean)]
+            cross = (point[0] - prev[0]) * (nxt[1] - point[1]) - (point[1] - prev[1]) * (nxt[0] - point[0])
+            if abs(cross) < 1e-6:
+                changed = True
+            else:
+                reduced.append(point)
+        clean = reduced if len(reduced) >= 3 else clean
+    ring = clean
     signed_area = sum(
         ring[index][0] * ring[(index + 1) % len(ring)][1]
         - ring[(index + 1) % len(ring)][0] * ring[index][1]
@@ -201,6 +226,28 @@ def _roof_surface_mesh(
     }
 
 
+def _infer_roof_profile(building, roof_surface):
+    """Infer a detailed profile only when measured roof relief supports it."""
+    if roof_surface is None or roof_surface.is_empty or len(roof_surface.vertices) < 4:
+        return "flat", {"supported": False, "reason": "no-roof-surface"}
+    z_values = roof_surface.vertices[:, 2]
+    relief = float(np.percentile(z_values, 95) - np.percentile(z_values, 5))
+    x_extent = float(np.ptp(roof_surface.vertices[:, 0]))
+    y_extent = float(np.ptp(roof_surface.vertices[:, 1]))
+    evidence = {
+        "supported": relief >= 0.8,
+        "relief_m": round(relief, 3),
+        "axis": "x" if x_extent >= y_extent else "y",
+    }
+    if relief < 0.8:
+        return "flat", evidence
+    # A long footprint with a coherent directional roof rise reads as gable;
+    # compact roofs with multi-directional relief use a conservative hip cap.
+    profile = "gable" if max(x_extent, y_extent) / max(min(x_extent, y_extent), 0.5) >= 1.35 else "hip"
+    evidence["profile"] = profile
+    return profile, evidence
+
+
 def _building_mesh(building, origin_x, origin_y, vertical_origin, roof_elevation=None):
     polygon = building.get("polygon_projected") or []
     if len(polygon) < 3:
@@ -255,34 +302,52 @@ def _building_roof_mesh(building, origin_x, origin_y, vertical_origin, roof_surf
     ring_xy = _ring_xy(building, origin_x, origin_y)
     if len(ring_xy) < 3:
         return None
-
+    # The raw DSM surface is used to measure the roof height and infer a
+    # supported architectural profile, but it is not emitted directly: a
+    # sparse raster footprint can produce an open surface with holes. The
+    # profile builder below always returns a closed roof shell instead.
     if roof_surface is not None and not roof_surface.is_empty:
-        # The DSM mesh is the measured roof. Temple profiles are appended as a
-        # bounded, explicitly approximate architectural prior below.
-        measured = roof_surface.copy()
-        roof = float(np.max(measured.vertices[:, 2])) + 0.08
-        if building.get("geometry_profile") == "temple":
-            profile = _temple_roof_mesh(building, ring_xy, roof)
-            if profile is not None:
-                measured = trimesh.util.concatenate([measured, profile])
-        return measured
-    ring = [(x, y, roof) for x, y in ring_xy]
-    vertices = np.asarray(ring, dtype=np.float32)
-    triangles = _triangulate_ring(ring_xy)
-    if not triangles:
-        return None
-    faces = [[a, b, c] for a, b, c in triangles]
-    if building.get("geometry_profile") == "temple":
-        profile = _temple_roof_mesh(building, ring_xy, roof)
-        if profile is not None:
-            vertices = np.vstack((vertices, profile.vertices))
-            faces.extend((profile.faces + len(ring)).tolist())
-    faces = np.asarray(faces, dtype=np.int64)
-    if not len(faces):
-        return None
-    mesh = trimesh.Trimesh(vertices=vertices, faces=faces, process=False)
-    mesh.visual.material = SimpleMaterial(diffuse=(194, 168, 117, 255))
-    return mesh
+        measured_top = float(np.max(roof_surface.vertices[:, 2])) + 0.08
+        if np.isfinite(measured_top):
+            roof = measured_top
+
+    def sealed_flat_slab():
+        """Use the accepted wall footprint for a guaranteed closed roof cap."""
+        thickness = _roof_shell_thickness(ring_xy)
+        roof_absolute = float(building.get("roof_elevation", vertical_origin))
+        slab = {
+            **building,
+            # _building_mesh adds its normal wall clearance to the base. Keep
+            # this cap just above the wall mass without leaving a visible gap.
+            "ground_elevation": roof_absolute - thickness - 0.05,
+            "roof_elevation": roof_absolute,
+        }
+        return _building_mesh(
+            slab,
+            origin_x,
+            origin_y,
+            vertical_origin,
+            roof_elevation=roof_absolute,
+        )
+
+    profile = _profile_roof_mesh(building, ring_xy, roof)
+    if profile is not None and profile.is_watertight:
+        return profile
+    # A malformed architectural profile must still leave the building with a
+    # sealed terrace. The flat fallback is deliberately tiny and sits above
+    # the closed wall massing without z-fighting.
+    fallback = {**building, "geometry_profile": "flat"}
+    profile = _profile_roof_mesh(fallback, ring_xy, roof)
+    if profile is not None and profile.is_watertight:
+        return profile
+    slab = sealed_flat_slab()
+    if slab is not None and not slab.is_watertight:
+        trimesh_repair.fill_holes(slab)
+        if hasattr(slab, "remove_unreferenced_vertices"):
+            slab.remove_unreferenced_vertices()
+    if slab is not None:
+        slab.visual.material = SimpleMaterial(diffuse=(194, 168, 117, 255))
+    return slab
 
 
 def _sloped_roof_mesh(building, origin_x, origin_y, vertical_origin, roof_surface=None):
@@ -486,6 +551,246 @@ def _tree_mesh(tree, origin_x, origin_y, vertical_origin):
     return mesh
 
 
+def _closed_roof_shell(top_vertices, top_faces, base_ring, base_z):
+    """Close a roof surface with eave walls and a bottom cap."""
+    if len(base_ring) < 3 or not top_faces:
+        return None
+    base_ring = np.asarray(base_ring, dtype=np.float32)
+    top_vertices = np.asarray(top_vertices, dtype=np.float32)
+    base_vertices = np.column_stack((base_ring, np.full(len(base_ring), float(base_z), dtype=np.float32)))
+    vertices = np.vstack((top_vertices, base_vertices))
+    base_start = len(top_vertices)
+    faces = [list(face) for face in top_faces]
+    for index in range(len(base_ring)):
+        nxt = (index + 1) % len(base_ring)
+        faces.extend((
+            [index, base_start + index, base_start + nxt],
+            [index, base_start + nxt, nxt],
+        ))
+    for a, b, c in _triangulate_ring(base_ring.tolist()):
+        faces.append([base_start + a, base_start + c, base_start + b])
+    if not faces:
+        return None
+    mesh = trimesh.Trimesh(vertices=vertices, faces=np.asarray(faces, dtype=np.int64), process=False)
+    if mesh.is_empty or not np.isfinite(mesh.vertices).all():
+        return None
+    if not mesh.is_watertight:
+        trimesh_repair.fill_holes(mesh)
+        if hasattr(mesh, "remove_unreferenced_vertices"):
+            mesh.remove_unreferenced_vertices()
+    mesh.visual.material = SimpleMaterial(diffuse=(194, 168, 117, 255))
+    return mesh
+
+
+def _roof_shell_thickness(ring_xy):
+    points = np.asarray(ring_xy, dtype=np.float32)
+    if points.ndim != 2 or len(points) < 3:
+        return 0.12
+    extents = np.maximum(points.max(axis=0) - points.min(axis=0), 0.5)
+    return max(0.08, min(0.3, float(min(extents)) * 0.025))
+
+
+def _profile_roof_mesh(building, ring_xy, roof):
+    """Create a bounded, watertight architectural roof shell."""
+    if len(ring_xy) < 3:
+        return None
+    profile = str(building.get("geometry_profile") or "flat").lower()
+    points = np.asarray(ring_xy, dtype=np.float32)
+    centroid = points.mean(axis=0)
+    if not _point_in_ring((float(centroid[0]), float(centroid[1])), ring_xy):
+        return None
+    # Keep all generated eaves comfortably inside the accepted footprint.
+    eaves = centroid + (points - centroid) * 0.88
+    if not all(_point_in_ring((float(point[0]), float(point[1])), ring_xy) for point in eaves):
+        return None
+    extents = np.maximum(points.max(axis=0) - points.min(axis=0), 0.5)
+    rise = min(max(0.8, float(building.get("height", 3.0)) * 0.18), max(1.0, float(min(extents)) * 0.45))
+    thickness = _roof_shell_thickness(ring_xy)
+    base_z = float(roof) - thickness
+    eave_z = float(roof)
+
+    if profile in {"temple", "towered"}:
+        lower = centroid + (points - centroid) * 0.58
+        middle = centroid + (points - centroid) * 0.42
+        upper = centroid + (points - centroid) * 0.23
+        spire_height = min(max(2.0, float(building.get("height", 3.0)) * 1.2), max(3.0, float(min(extents)) * 0.25))
+        vertices = np.vstack((
+            np.column_stack((lower, np.full(len(lower), eave_z + 0.08, dtype=np.float32))),
+            np.column_stack((middle, np.full(len(middle), eave_z + spire_height * 0.42, dtype=np.float32))),
+            np.column_stack((upper, np.full(len(upper), eave_z + spire_height * 0.78, dtype=np.float32))),
+            np.asarray([[centroid[0], centroid[1], eave_z + spire_height]], dtype=np.float32),
+        ))
+        n = len(points)
+        faces = []
+        for start, end in ((0, n), (n, 2 * n)):
+            for index in range(n):
+                nxt = (index + 1) % n
+                faces.extend(([start + index, start + nxt, end + index], [start + nxt, end + nxt, end + index]))
+        apex = 3 * n
+        for index in range(n):
+            nxt = (index + 1) % n
+            faces.append([2 * n + index, 2 * n + nxt, apex])
+        mesh = _closed_roof_shell(vertices, faces, eaves, base_z)
+        if mesh is not None:
+            building["roof_plane_count"] = 4
+        return mesh
+
+    top_eaves = np.column_stack((eaves, np.full(len(eaves), eave_z, dtype=np.float32)))
+    if profile == "hip":
+        apex = np.asarray([[centroid[0], centroid[1], eave_z + rise]], dtype=np.float32)
+        vertices = np.vstack((top_eaves, apex))
+        apex_index = len(eaves)
+        faces = [[index, (index + 1) % len(eaves), apex_index] for index in range(len(eaves))]
+        building["roof_plane_count"] = 4
+        return _closed_roof_shell(vertices, faces, eaves, base_z)
+
+    if profile in {"gable", "compound"}:
+        # The bounded gable construction below is exact for a four-corner
+        # footprint.  Irregular/concave footprints use a sealed hip fallback
+        # instead of risking a ridge that crosses a courtyard or leaves an
+        # open roof boundary.
+        if len(eaves) != 4:
+            fallback = {**building, "geometry_profile": "hip"}
+            return _profile_roof_mesh(fallback, ring_xy, roof)
+        axis = np.asarray([1.0, 0.0], dtype=np.float32) if extents[0] >= extents[1] else np.asarray([0.0, 1.0], dtype=np.float32)
+        half = float(max(extents) * 0.30)
+        ridge = np.asarray([centroid - axis * half, centroid + axis * half], dtype=np.float32)
+        # A concave footprint can make a naive ridge bridge its courtyard.
+        # Fall back to a sealed flat cap rather than emitting geometry outside
+        # the accepted building footprint.
+        if not all(_point_in_ring((float(point[0]), float(point[1])), ring_xy) for point in ridge):
+            fallback = {**building, "geometry_profile": "flat"}
+            return _profile_roof_mesh(fallback, ring_xy, roof)
+        ridge_z = np.full((2, 1), eave_z + rise, dtype=np.float32)
+        vertices = np.vstack((top_eaves, np.hstack((ridge, ridge_z))))
+        faces = []
+        for index in range(len(eaves)):
+            nxt = (index + 1) % len(eaves)
+            midpoint = (eaves[index] + eaves[nxt]) * 0.5
+            along_axis = float(np.dot(midpoint - centroid, axis))
+            if abs(along_axis) <= max(float(min(extents)) * 0.08, 1e-5):
+                # Long eave: bridge both ridge endpoints with a two-triangle
+                # roof plane. The two end edges below cap the gable ends.
+                start_ridge = len(eaves) if float(np.dot(eaves[index] - centroid, axis)) < 0 else len(eaves) + 1
+                end_ridge = len(eaves) if float(np.dot(eaves[nxt] - centroid, axis)) < 0 else len(eaves) + 1
+                faces.extend(([index, nxt, start_ridge], [nxt, end_ridge, start_ridge]))
+            else:
+                ridge_index = len(eaves) if along_axis < 0 else len(eaves) + 1
+                faces.append([index, nxt, ridge_index])
+        building["roof_plane_count"] = 2 if profile == "gable" else 4
+        return _closed_roof_shell(vertices, faces, eaves, base_z)
+
+    # Flat and unknown profiles get a thin sealed slab, preventing open
+    # terraces while preserving the measured wall height.
+    triangles = _triangulate_ring(eaves.tolist())
+    return _closed_roof_shell(top_eaves, triangles, eaves, base_z)
+
+
+def _point_in_ring(point, ring):
+    if len(ring) < 3:
+        return False
+    x, y = point
+    inside = False
+    previous = ring[-1]
+    for current in ring:
+        x1, y1 = current
+        x2, y2 = previous
+        if (y1 > y) != (y2 > y) and abs(y2 - y1) > 1e-12:
+            if x < (x2 - x1) * (y - y1) / (y2 - y1) + x1:
+                inside = not inside
+        previous = current
+    return inside
+
+
+def _segments_intersect(a, b, c, d):
+    def orientation(p, q, r):
+        value = (q[1] - p[1]) * (r[0] - q[0]) - (q[0] - p[0]) * (r[1] - q[1])
+        if abs(value) < 1e-9:
+            return 0
+        return 1 if value > 0 else 2
+
+    o1, o2 = orientation(a, b, c), orientation(a, b, d)
+    o3, o4 = orientation(c, d, a), orientation(c, d, b)
+    return o1 != o2 and o3 != o4
+
+
+def _rings_intersect(first, second):
+    if len(first) < 3 or len(second) < 3:
+        return False
+    if _point_in_ring(first[0], second) or _point_in_ring(second[0], first):
+        return True
+    for index, start in enumerate(first):
+        end = first[(index + 1) % len(first)]
+        for other_index, other_start in enumerate(second):
+            other_end = second[(other_index + 1) % len(second)]
+            if _segments_intersect(start, end, other_start, other_end):
+                return True
+    return False
+
+
+def _feature_hits_building(feature, buildings, kind):
+    """Reject context geometry that would be rendered over a roof."""
+    if kind not in {"landcover", "trees", "water", "roads"}:
+        return False
+    polygon = feature.get("polygon_projected") or []
+    point = feature.get("point_projected") or []
+    samples = []
+    if len(point) == 2:
+        try:
+            samples.append((float(point[0]), float(point[1])))
+            radius = max(0.5, float(feature.get("canopy_radius", 2.0)))
+            for angle in np.linspace(0.0, 2.0 * np.pi, 9)[:-1]:
+                samples.append((float(point[0]) + radius * np.cos(angle), float(point[1]) + radius * np.sin(angle)))
+        except (TypeError, ValueError):
+            pass
+    if len(polygon) >= 3:
+        samples.extend((float(p[0]), float(p[1])) for p in polygon)
+        samples.append((
+            sum(float(p[0]) for p in polygon) / len(polygon),
+            sum(float(p[1]) for p in polygon) / len(polygon),
+        ))
+    for building in buildings or []:
+        footprint = building.get("polygon_projected") or []
+        if len(footprint) < 3:
+            continue
+        if len(polygon) >= 3 and _rings_intersect(polygon, footprint):
+            return True
+        if any(_point_in_ring(sample, footprint) for sample in samples):
+            return True
+        # A vegetation polygon can surround a footprint without having any
+        # of its own vertices inside it.  The reverse centroid check handles
+        # that common land-cover case without a heavyweight geometry library.
+        if len(polygon) >= 3:
+            center = (
+                sum(float(p[0]) for p in footprint) / len(footprint),
+                sum(float(p[1]) for p in footprint) / len(footprint),
+            )
+            if _point_in_ring(center, polygon):
+                return True
+    if kind == "roads":
+        path = feature.get("path_projected") or []
+        for building in buildings or []:
+            footprint = building.get("polygon_projected") or []
+            if len(footprint) < 3 or len(path) < 2:
+                continue
+            if any(_point_in_ring((float(point[0]), float(point[1])), footprint) for point in path):
+                return True
+            for index in range(len(path) - 1):
+                start, end = path[index], path[index + 1]
+                for edge_index, edge_start in enumerate(footprint):
+                    edge_end = footprint[(edge_index + 1) % len(footprint)]
+                    if _segments_intersect(start, end, edge_start, edge_end):
+                        return True
+    return False
+
+
+def _safe_feature_id(value, fallback):
+    try:
+        return int(value)
+    except (TypeError, ValueError, OverflowError):
+        return int(fallback)
+
+
 def _scene_with_buildings(
     terrain,
     metadata,
@@ -502,15 +807,26 @@ def _scene_with_buildings(
     added = 0
     building_vertices = 0
     building_faces = 0
+    building_geometry_qa = {
+        "building_meshes_checked": 0,
+        "building_meshes_watertight": 0,
+        "building_roofs_watertight": 0,
+        "building_meshes_repaired": 0,
+        "building_meshes_rejected": 0,
+        "building_roofs_rejected": 0,
+    }
     for building in buildings or []:
         roof_surface = None
+        trusted_height = str(building.get("height_source", "")).lower().startswith(("osm:height", "osm:levels"))
         roof_stats = {
             "roof_surface_source": "unavailable:no-raw-dsm",
             "roof_valid_fraction": 0.0,
-            "geometry_quality": "approximate",
-            "profile_source": "bounded-procedural-profile",
+            "geometry_quality": "measured" if trusted_height else "approximate",
+            "profile_source": "osm-explicit-height" if trusted_height else "bounded-procedural-profile",
         }
-        if raw_dsm is not None and raw_transform is not None:
+        if trusted_height:
+            roof_stats["roof_surface_source"] = "osm-explicit-height"
+        if raw_dsm is not None and raw_transform is not None and not trusted_height:
             roof_surface, sampled_stats = _roof_surface_mesh(
                 building,
                 raw_dsm,
@@ -522,6 +838,15 @@ def _scene_with_buildings(
             )
             roof_stats.update(sampled_stats)
         building.update(roof_stats)
+        explicit_roof_shape = str((building.get("osm_tags") or {}).get("roof:shape") or "").lower()
+        if roof_surface is not None and str(building.get("geometry_profile") or "flat") in {"flat", "standard"} and explicit_roof_shape not in {"flat", "flat_roof"}:
+            inferred_profile, roof_evidence = _infer_roof_profile(building, roof_surface)
+            building["roof_evidence"] = {**(building.get("roof_evidence") or {}), **roof_evidence}
+            if roof_evidence.get("supported"):
+                building["geometry_profile"] = inferred_profile
+                building["roof_type"] = inferred_profile
+                building["roof_plane_count"] = {"gable": 2, "hip": 4}.get(inferred_profile, 1)
+                building["profile_source"] = "metric-dsm-roof-relief"
         if roof_surface is not None and not roof_surface.is_empty:
             measured_top = float(np.max(roof_surface.vertices[:, 2])) + metadata["vertical_origin_m"]
             if np.isfinite(measured_top):
@@ -530,39 +855,61 @@ def _scene_with_buildings(
                 if np.isfinite(ground_value):
                     building["height"] = round(max(0.5, measured_top - ground_value), 3)
                     building["height_source"] = "metric-dsm-sampled"
-        mesh = _building_mesh(
-            building,
-            metadata["origin_x"],
-            metadata["origin_y"],
-            metadata["vertical_origin_m"],
-        )
-        if mesh is None:
+        try:
+            ring_xy = _ring_xy(building, metadata["origin_x"], metadata["origin_y"])
+            roof_value = float(building.get("roof_elevation", metadata["vertical_origin_m"]))
+            wall_roof_value = roof_value - _roof_shell_thickness(ring_xy) - 0.02
+            mesh = _building_mesh(
+                building,
+                metadata["origin_x"],
+                metadata["origin_y"],
+                metadata["vertical_origin_m"],
+                roof_elevation=wall_roof_value,
+            )
+        except (TypeError, ValueError, IndexError, OverflowError):
+            building_geometry_qa["building_meshes_rejected"] += 1
+            building["geometry_quality"] = "rejected-invalid-values"
             continue
-        identifier = int(building.get("id", added + 1))
+        if mesh is None:
+            building_geometry_qa["building_meshes_rejected"] += 1
+            building["geometry_quality"] = "rejected-invalid-footprint"
+            continue
+        building_geometry_qa["building_meshes_checked"] += 1
+        if not mesh.is_watertight:
+            trimesh_repair.fill_holes(mesh)
+            if hasattr(mesh, "remove_unreferenced_vertices"):
+                mesh.remove_unreferenced_vertices()
+            if mesh.is_watertight:
+                building_geometry_qa["building_meshes_repaired"] += 1
+        if not mesh.is_watertight:
+            building_geometry_qa["building_meshes_rejected"] += 1
+            building["geometry_quality"] = "rejected-nonwatertight"
+            continue
+        building_geometry_qa["building_meshes_watertight"] += 1
+        identifier = _safe_feature_id(building.get("id"), added + 1)
         scene.add_geometry(mesh, node_name=f"BUILDING_{identifier}_{added + 1}", geom_name=f"BUILDING_{identifier}_{added + 1}")
-        roof = _building_roof_mesh(
-            building,
-            metadata["origin_x"],
-            metadata["origin_y"],
-            metadata["vertical_origin_m"],
-            roof_surface=roof_surface,
-        )
-        if roof is not None:
+        roof_error = False
+        try:
+            roof = _building_roof_mesh(
+                building,
+                metadata["origin_x"],
+                metadata["origin_y"],
+                metadata["vertical_origin_m"],
+                roof_surface=roof_surface,
+            )
+        except (TypeError, ValueError, IndexError, OverflowError):
+            roof = None
+            roof_error = True
+            building_geometry_qa["building_roofs_rejected"] += 1
+        if roof is not None and roof.is_watertight:
             if texture_image is not None:
                 apply_rgb_texture(roof, texture_image, *(texture_bounds or (None, None)))
             scene.add_geometry(roof, node_name=f"ROOF_BUILDING_{identifier}_{added + 1}", geom_name=f"ROOF_BUILDING_{identifier}_{added + 1}")
-        # Add sloped roof overlay when DSM shows significant relief
-        sloped_roof = _sloped_roof_mesh(
-            building,
-            metadata["origin_x"],
-            metadata["origin_y"],
-            metadata["vertical_origin_m"],
-            roof_surface=roof_surface,
-        )
-        if sloped_roof is not None:
-            if texture_image is not None:
-                apply_rgb_texture(sloped_roof, texture_image, *(texture_bounds or (None, None)))
-            scene.add_geometry(sloped_roof, node_name=f"SLOPED_ROOF_{identifier}_{added + 1}", geom_name=f"SLOPED_ROOF_{identifier}_{added + 1}")
+            building_geometry_qa["building_roofs_watertight"] += 1
+        elif roof is not None:
+            building_geometry_qa["building_roofs_rejected"] += 1
+        elif not roof_error:
+            building_geometry_qa["building_roofs_rejected"] += 1
         added += 1
         building_vertices += len(mesh.vertices)
         building_faces += len(mesh.faces)
@@ -573,6 +920,14 @@ def _scene_with_buildings(
         "landcover": 0,
         "trees": 0,
         "semantic": 0,
+        "geometry_qa": {
+            **building_geometry_qa,
+            "vegetation_building_intersections": 0,
+            "road_building_intersections": 0,
+            "water_building_intersections": 0,
+            "context_meshes_rejected": 0,
+            "emitted_context_intersections": 0,
+        },
         "semantic_layers": {
             "building": 0,
             "vegetation": 0,
@@ -588,35 +943,52 @@ def _scene_with_buildings(
         "park": (92, 136, 70, 190),
     }
     for feature in environment.get("roads") or []:
+        if _feature_hits_building(feature, buildings, "roads"):
+            environment_counts["geometry_qa"]["road_building_intersections"] += 1
+            environment_counts["geometry_qa"]["context_meshes_rejected"] += 1
+            continue
         mesh = _road_mesh(feature, metadata["origin_x"], metadata["origin_y"], metadata["vertical_origin_m"])
         if mesh is not None:
-            name = f"ROAD_{int(feature.get('id', environment_counts['roads'] + 1))}_{environment_counts['roads'] + 1}"
+            name = f"ROAD_{_safe_feature_id(feature.get('id'), environment_counts['roads'] + 1)}_{environment_counts['roads'] + 1}"
             scene.add_geometry(mesh, node_name=name, geom_name=name)
             environment_counts["roads"] += 1
-    # Vegetation is a draped context layer and must not flatten hills beneath
-    # it. Water receives a stable base level; buildings are flattened so their
-    # isolated walls do not sit on top of roof-height terrain.
-    for layer in ("water",):
+    # Context layers are deliberately ground-hugging.  They are isolated from
+    # the bare terrain and rejected where they intersect an accepted building,
+    # so a canopy or semantic region cannot cut through a roof.
+    for layer in ("water", "landcover"):
         for feature in environment.get(layer) or []:
+            if _feature_hits_building(feature, buildings, layer):
+                qa_key = "water_building_intersections" if layer == "water" else "vegetation_building_intersections"
+                environment_counts["geometry_qa"][qa_key] += 1
+                environment_counts["geometry_qa"]["context_meshes_rejected"] += 1
+                continue
             mesh = _polygon_mesh(
                 feature,
                 metadata["origin_x"],
                 metadata["origin_y"],
                 metadata["vertical_origin_m"],
-                colors["water" if layer == "water" else feature.get("class", "park")],
+                colors.get("water" if layer == "water" else feature.get("class", "park"), colors["park"]),
                 z_offset=0.12 if layer == "water" else 0.06,
             )
             if mesh is not None:
-                name = f"{'WATER' if layer == 'water' else 'VEGETATION'}_{int(feature.get('id', environment_counts[layer] + 1))}_{environment_counts[layer] + 1}"
+                name = f"{'WATER' if layer == 'water' else 'VEGETATION'}_{_safe_feature_id(feature.get('id'), environment_counts[layer] + 1)}_{environment_counts[layer] + 1}"
                 scene.add_geometry(mesh, node_name=name, geom_name=name)
                 environment_counts[layer] += 1
     for tree in environment.get("trees") or []:
+        if _feature_hits_building(tree, buildings, "trees"):
+            environment_counts["geometry_qa"]["vegetation_building_intersections"] += 1
+            environment_counts["geometry_qa"]["context_meshes_rejected"] += 1
+            continue
         mesh = _tree_mesh(tree, metadata["origin_x"], metadata["origin_y"], metadata["vertical_origin_m"])
         if mesh is not None:
-            name = f"VEGETATION_TREE_{int(tree.get('id', environment_counts['trees'] + 1))}_{environment_counts['trees'] + 1}"
+            name = f"VEGETATION_TREE_{_safe_feature_id(tree.get('id'), environment_counts['trees'] + 1)}_{environment_counts['trees'] + 1}"
             scene.add_geometry(mesh, node_name=name, geom_name=name)
             environment_counts["trees"] += 1
     for region in (environment.get("semantic_regions") or [])[:300]:
+        if _feature_hits_building(region, buildings, "landcover"):
+            environment_counts["geometry_qa"]["vegetation_building_intersections"] += 1
+            environment_counts["geometry_qa"]["context_meshes_rejected"] += 1
+            continue
         mesh = _semantic_wire_mesh(region, metadata["origin_x"], metadata["origin_y"], metadata["vertical_origin_m"])
         if mesh is not None:
             name = f"SEMANTIC_WIREFRAME_{region.get('class', 'other').upper()}_{environment_counts['semantic'] + 1}"
@@ -631,10 +1003,12 @@ def _terrain_overrides(buildings=None, environment=None):
     """Collect polygons that should sit on top of bare terrain, not inside it."""
     environment = environment or {}
     overrides = []
-    for layer in ("water", "landcover"):
+    for layer in ("landcover", "roads", "water", "exclusion_zones"):
         for feature in environment.get(layer) or []:
             if feature.get("polygon_projected"):
                 overrides.append(feature)
+            elif layer == "roads" and feature.get("path_projected"):
+                overrides.append({**feature, "polygon_projected": feature.get("path_projected")})
     # Semantic regions are evidence/diagnostics only. Flattening every raw
     # segmentation ribbon turns vegetation and uncertain roofs into a large
     # opaque hill. Only accepted physical layers alter the terrain surface.
@@ -655,6 +1029,7 @@ def run_reconstruction(
     buildings=None,
     environment=None,
     source_gsd_m=None,
+    terrain_surface_path=None,
 ):
     """Create a textured GLB from the supplied DSM and RGB raster."""
     dsm_path = Path(dsm_path)
@@ -667,7 +1042,9 @@ def run_reconstruction(
         raise FileNotFoundError(f"RGB raster not found: {rgb_path}")
     if progress_callback:
         progress_callback({"fraction": 0.15, "sub": "creating mesh from DSM"})
-    terrain_overrides = _terrain_overrides(buildings, environment)
+    terrain_surface_path = Path(terrain_surface_path) if terrain_surface_path else None
+    terrain_source = terrain_surface_path if terrain_surface_path and terrain_surface_path.exists() else dsm_path
+    terrain_overrides = [] if terrain_source != dsm_path else _terrain_overrides(buildings, environment)
     # Keep this unmodified calibrated grid for measured roof sampling. The
     # terrain call below receives a separate copy with only accepted physical
     # features flattened beneath their isolated scene layers.
@@ -677,7 +1054,7 @@ def run_reconstruction(
         surface_overrides=None,
     )
     mesh, metadata = create_dsm_mesh(
-        dsm_path,
+        terrain_source,
         target_size=size,
         z_units=z_units,
         surface_overrides=terrain_overrides,
@@ -715,16 +1092,41 @@ def run_reconstruction(
     if progress_callback:
         progress_callback({"fraction": 0.82, "sub": "exporting GLB"})
     export_glb(scene, output_path)
+    with rasterio.open(dsm_path) as source:
+        source_bounds = [float(source.bounds.left), float(source.bounds.bottom), float(source.bounds.right), float(source.bounds.top)]
+        source_resolution = [float(np.hypot(source.transform.a, source.transform.d)), float(np.hypot(source.transform.b, source.transform.e))]
+        source_grid = {"width": int(source.width), "height": int(source.height), "resolution_m": source_resolution, "bounds": source_bounds}
+        source_crs = str(source.crs) if source.crs else None
+    mesh_width = int(metadata.get("width", 0))
+    mesh_height = int(metadata.get("height", 0))
+    scene_alignment = {
+        "crs": source_crs or metadata.get("crs"),
+        "source_grid": source_grid,
+        "mesh_grid": {
+            "width": mesh_width,
+            "height": mesh_height,
+            "resolution_m": [float(metadata.get("resolution_x", 0.0)), float(metadata.get("resolution_y", 0.0))],
+            "origin": [float(metadata.get("origin_x", 0.0)), float(metadata.get("origin_y", 0.0))],
+            "projected_bounds": list(metadata.get("bounds") or source_bounds),
+        },
+        "source_resolution_m": source_resolution,
+        "projected_bounds": source_bounds,
+        "geometry_contract": "projected-feature-coordinates",
+    }
+
     metadata.update({
         "source_dsm": str(dsm_path),
+        "terrain_surface_source": str(terrain_source),
+        "terrain_surface_provenance": "persisted-visualization-bare-earth" if terrain_source != dsm_path else "downsampled-feature-overrides",
         "source_rgb": str(rgb_path),
         "output_glb": str(output_path),
         "visualization_target_size": size,
-        "coordinate_system": "Local mesh coordinates",
+        "coordinate_system": "Local Y-up mesh coordinates",
         "z_units": z_units,
         "horizontal_units": "meters" if z_units == "meters" else "relative grid units",
         "vertical_units": "meters" if z_units == "meters" else "relative units",
         "vertical_origin_m": metadata.get("vertical_origin_m"),
+        "scene_alignment": scene_alignment,
         "texture_valid": True,
         "mesh_valid": True,
         "description": "ASTERRA DSM converted to a textured 3D mesh. Original geospatial reference is preserved in this metadata.",
@@ -733,10 +1135,15 @@ def run_reconstruction(
         "building_faces": building_faces,
         "has_buildings": building_count > 0,
         "environment_counts": environment_counts,
+        "geometry_qa": environment_counts.get("geometry_qa", {}),
+        "segmentation_wireframes": {
+            "count": int(environment_counts.get("semantic", 0)),
+            "default_visible": False,
+        },
         "has_environment": any(
             int(value) > 0
             for key, value in environment_counts.items()
-            if key not in {"semantic", "semantic_layers"}
+            if key not in {"semantic", "semantic_layers", "geometry_qa"}
         ),
         "terrain_overrides": len(terrain_overrides),
         "reconstruction": {

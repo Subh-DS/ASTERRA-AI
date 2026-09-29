@@ -135,93 +135,6 @@ const SCENE_THEMES = {
   },
 }
 
-function demoRegions(mask, width, height, threshold = 0.5, cell = 12, limit = 32) {
-  if (!mask || !width || !height) return []
-  const cols = Math.ceil(width / cell)
-  const rows = Math.ceil(height / cell)
-  const active = new Uint8Array(cols * rows)
-  for (let gy = 0; gy < rows; gy++) {
-    for (let gx = 0; gx < cols; gx++) {
-      let total = 0
-      let count = 0
-      for (let y = gy * cell; y < Math.min(height, (gy + 1) * cell); y++) {
-        for (let x = gx * cell; x < Math.min(width, (gx + 1) * cell); x++) {
-          total += Number(mask[y * width + x]) || 0
-          count++
-        }
-      }
-      active[gy * cols + gx] = total / Math.max(1, count) >= threshold ? 1 : 0
-    }
-  }
-  const visited = new Uint8Array(active.length)
-  const regions = []
-  for (let start = 0; start < active.length && regions.length < limit; start++) {
-    if (!active[start] || visited[start]) continue
-    const queue = [start]
-    visited[start] = 1
-    let minX = start % cols, maxX = minX, minY = Math.floor(start / cols), maxY = minY
-    while (queue.length) {
-      const index = queue.pop()
-      const gx = index % cols
-      const gy = Math.floor(index / cols)
-      minX = Math.min(minX, gx); maxX = Math.max(maxX, gx)
-      minY = Math.min(minY, gy); maxY = Math.max(maxY, gy)
-      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-        const nx = gx + dx, ny = gy + dy
-        if (nx < 0 || ny < 0 || nx >= cols || ny >= rows) continue
-        const next = ny * cols + nx
-        if (active[next] && !visited[next]) {
-          visited[next] = 1
-          queue.push(next)
-        }
-      }
-    }
-    const x0 = minX * cell, y0 = minY * cell
-    const x1 = Math.min(width - 1, (maxX + 1) * cell)
-    const y1 = Math.min(height - 1, (maxY + 1) * cell)
-    if ((x1 - x0) * (y1 - y0) >= cell * cell * 2) {
-      regions.push({ polygon: [[x0, y0], [x1, y0], [x1, y1], [x0, y1]], area: (x1 - x0) * (y1 - y0) })
-    }
-  }
-  return regions.sort((a, b) => b.area - a.area)
-}
-
-function demoEnvironmentFromMasks(dsm, minH) {
-  const masks = dsm?.masks
-  const width = Number(dsm?.width) || 0
-  const height = Number(dsm?.height) || 0
-  if (!masks || !width || !height) return null
-  const water = demoRegions(masks.water, width, height, 0.52, 12, 12)
-  const vegetation = demoRegions(masks.vegetation, width, height, 0.50, 14, 24)
-  const buildings = demoRegions(masks.building, width, height, 0.58, 10, 80)
-  return {
-    roads: [],
-    water: water.map((item, i) => ({ id: -1000 - i, polygon: item.polygon, ground_elevation: minH, class: 'water', source: 'demo-mask' })),
-    landcover: vegetation.map((item, i) => ({ id: -2000 - i, polygon: item.polygon, ground_elevation: minH, class: 'forest', source: 'demo-mask' })),
-    trees: vegetation.slice(0, 80).map((item, i) => {
-      const xs = item.polygon.map((p) => p[0])
-      const ys = item.polygon.map((p) => p[1])
-      return {
-        id: -3000 - i,
-        point: [(Math.min(...xs) + Math.max(...xs)) * 0.5, (Math.min(...ys) + Math.max(...ys)) * 0.5],
-        ground_elevation: minH,
-        height: 5 + (i % 5),
-        canopy_radius: 1.8 + (i % 3) * 0.45,
-        source: 'demo-mask',
-      }
-    }),
-    demoBuildings: buildings.map((item, i) => ({
-      id: -4000 - i,
-      polygon: item.polygon,
-      ground_elevation: minH,
-      height: Math.max(3, Math.min(18, 3 + Math.sqrt(item.area) * 0.12)),
-      roof_elevation: minH + Math.max(3, Math.min(18, 3 + Math.sqrt(item.area) * 0.12)),
-      area_px: item.area,
-      source: 'demo-mask',
-    })),
-  }
-}
-
 export class TerrainViewer {
   constructor(container, opts = {}) {
     this.container = container
@@ -231,8 +144,6 @@ export class TerrainViewer {
     this.revealPlayedFor = opts.revealedForJobId ?? null
     this.onProbe = opts.onProbe || (() => {})
     this.onMeasure = opts.onMeasure || (() => {})
-    this.onPick = opts.onPick || (() => {})
-    this.onLoad = opts.onLoad || (() => {})
     this.onRevealProgress = opts.onRevealProgress || (() => {})
     this.onFpsDrop = opts.onFpsDrop || (() => {})
     this.onFlyLock = opts.onFlyLock || (() => {})
@@ -265,13 +176,12 @@ export class TerrainViewer {
 
     this.mesh = null
     this.structGroup = null
-    this.layerGroups = {}
     this.groundPlane = null
     this.baseHeights = null
     this.baseValid = null
     this.gridW = 0
     this.gridH = 0
-    this.zScale = 1.0
+    this.zScale = Number.isFinite(opts.zScale) ? opts.zScale : 1.0
     this.mode = 'orbit'
     this.transitioning = false
     this.measurePts = []
@@ -460,7 +370,8 @@ export class TerrainViewer {
     const myToken = this._loadToken
     this.stopTour(true)
 
-    const { heights, width: gw, height: gh, textureSrc, textureCanvas, normalSrc } = dsm
+    const heights = dsm.terrainHeights || dsm.heights
+    const { width: gw, height: gh, textureSrc, textureCanvas, normalSrc } = dsm
     const jId = dsm.id || dsm.jobId || null
     this.gridW = gw
     this.gridH = gh
@@ -658,9 +569,10 @@ export class TerrainViewer {
     this.mesh.castShadow = this.caps.shadows
     this.scene.add(this.mesh)
 
-    // Believable context from real scene data only: a grounding plane that
-    // fills the void beneath the tile edges, plus massing blocks extruded
-    // from measured building footprints (never invented).
+    // Believable context from real scene data only: the terrain is the
+    // persisted bare-earth surface, while massing blocks are extruded from
+    // the raw metric building records.  The raw DSM remains available for
+    // inspection/export but never becomes the ground underneath a roof.
     this._buildGroundPlane(spanH)
     this._buildStructures(dsm, { minH, sx, sy, gw, gh })
 
@@ -681,7 +593,7 @@ export class TerrainViewer {
       cam.updateProjectionMatrix()
     }
 
-    const peakH = Math.max(maxBH, this.structurePeakH || 0) * Math.max(0.0001, this.zScale)
+    const peakH = maxBH * Math.max(0.0001, this.zScale)
     const spanScaled = spanH * Math.max(0.0001, this.zScale)
     const halfR = Math.max((gw - 1) * sx, (gh - 1) * sy) * 0.5
     const boundRadius = Math.sqrt(halfR * halfR + spanScaled * spanScaled * 0.25)
@@ -692,7 +604,7 @@ export class TerrainViewer {
     const tanFov = Math.min(tanV, tanH)
     const distFromTarget = (boundRadius * 0.99) / Math.max(0.001, tanFov)
     const heightClearance = peakH * 0.5
-    this.orbitTarget = new THREE.Vector3(0, peakH * 0.42, 0)
+    this.orbitTarget = new THREE.Vector3(0, peakH * 0.5, 0)
     this.orbitHome = new THREE.Vector3().setFromSphericalCoords(
       distFromTarget,
       Math.PI * 0.32,
@@ -745,66 +657,8 @@ export class TerrainViewer {
 
   _buildStructures(dsm, { minH, sx, sy, gw, gh }) {
     this._removeStructures()
-    const mappedEnvironment = dsm?.environment || {}
-    const hasMappedEnvironment = ['roads', 'water', 'landcover', 'trees'].some((key) => (mappedEnvironment[key] || []).length)
-    const demoEnvironment = !hasMappedEnvironment && dsm?.offline ? demoEnvironmentFromMasks(dsm, minH) : null
-    const environment = demoEnvironment || mappedEnvironment
-    const list = [
-      ...(Array.isArray(dsm?.buildings) ? dsm.buildings : []),
-      ...(demoEnvironment?.demoBuildings || []),
-    ]
-    const ox = ((gw - 1) * sx) / 2
-    const oz = ((gh - 1) * sy) / 2
-    const groups = {
-      BUILDINGS: new THREE.Group(),
-      WATER: new THREE.Group(),
-      VEGETATION: new THREE.Group(),
-      TREES: new THREE.Group(),
-      ROADS: new THREE.Group(),
-    }
-    this.structurePeakH = 0
-
-    const shapeFor = (polygon) => {
-      if (!Array.isArray(polygon) || polygon.length < 3) return null
-      const shape = new THREE.Shape()
-      let count = 0
-      polygon.forEach(([col, row]) => {
-        const wx = Number(col) * sx - ox
-        const wz = -(Number(row) * sy - oz)
-        if (!Number.isFinite(wx) || !Number.isFinite(wz)) return
-        if (!count) shape.moveTo(wx, wz)
-        else shape.lineTo(wx, wz)
-        count += 1
-      })
-      return count >= 3 ? shape : null
-    }
-
-    const yFor = (feature, offset = 0.05) => {
-      const ground = Number(feature?.ground_elevation)
-      return (Number.isFinite(ground) ? ground : minH) - minH + offset
-    }
-
-    const addPolygon = (group, feature, material, offset = 0.05) => {
-      const shape = shapeFor(feature?.polygon)
-      if (!shape) return null
-      let geometry
-      try {
-        geometry = new THREE.ShapeGeometry(shape)
-        geometry.rotateX(-Math.PI / 2)
-      } catch {
-        return null
-      }
-      const mesh = new THREE.Mesh(geometry, material)
-      mesh.position.y = yFor(feature, offset)
-      mesh.userData.featureId = feature?.id ?? null
-      group.add(mesh)
-      this._ownedGeometries.add(geometry)
-      return mesh
-    }
-
-    // Only cleaned footprints with usable elevations are rendered. The
-    // backend is responsible for confidence/relief gates; the frontend must
-    // never invent a structure from an absent record.
+    const list = Array.isArray(dsm?.buildings) ? dsm.buildings : []
+    // Only measured footprints with usable elevations — never invented.
     const usable = list.filter((b) => {
       if (!Array.isArray(b.polygon) || b.polygon.length < 3) return false
       const roof = Number(b.roof_elevation)
@@ -812,7 +666,13 @@ export class TerrainViewer {
       const h = Number(b.height)
       return Number.isFinite(roof) || (Number.isFinite(gnd) && Number.isFinite(h) && h > 0)
     })
+    if (!usable.length) return
     usable.sort((a, b) => (Number(b.area_m2) || Number(b.area_px) || 0) - (Number(a.area_m2) || Number(a.area_px) || 0))
+    const group = new THREE.Group()
+    const mat = new THREE.MeshStandardMaterial({ color: '#938d82', roughness: 0.9, metalness: 0.0 })
+    this._ownedMaterials.add(mat)
+    const ox = ((gw - 1) * sx) / 2
+    const oz = ((gh - 1) * sy) / 2
     let added = 0
     for (const b of usable) {
       if (added >= 150) break
@@ -822,8 +682,15 @@ export class TerrainViewer {
       const ground = (Number.isFinite(gnd) ? gnd : minH) - minH
       const top = (Number.isFinite(roof) ? roof : gnd + Math.max(h, 0.5)) - minH
       if (!(top > ground)) continue
-      const shape = shapeFor(b.polygon)
-      if (!shape) continue
+      const shape = new THREE.Shape()
+      b.polygon.forEach(([col, row], i) => {
+        const wx = Number(col) * sx - ox
+        const wz = -(Number(row) * sy - oz)
+        if (!Number.isFinite(wx) || !Number.isFinite(wz)) return
+        if (i === 0) shape.moveTo(wx, wz)
+        else shape.lineTo(wx, wz)
+      })
+      if (shape.getPoints().length < 3) continue
       let geo
       try {
         geo = new THREE.ExtrudeGeometry(shape, { depth: Math.max(top - ground, 0.5), bevelEnabled: false })
@@ -831,123 +698,25 @@ export class TerrainViewer {
         continue
       }
       geo.rotateX(-Math.PI / 2)
-      const heightRatio = Math.min(1, Math.max(0, (top - ground) / 30))
-      const mat = new THREE.MeshStandardMaterial({
-        color: new THREE.Color().setHSL(0.10, 0.16, 0.49 + heightRatio * 0.12),
-        roughness: 0.78,
-        metalness: 0.02,
-      })
-      this._ownedMaterials.add(mat)
       const mesh = new THREE.Mesh(geo, mat)
       mesh.position.y = ground
-      mesh.userData.buildingId = b.id ?? null
       mesh.castShadow = this.caps.shadows
       mesh.receiveShadow = this.caps.shadows
       this._ownedGeometries.add(geo)
-      groups.BUILDINGS.add(mesh)
-      this.structurePeakH = Math.max(this.structurePeakH, top)
+      group.add(mesh)
       added++
     }
-
-    const waterMat = new THREE.MeshStandardMaterial({
-      color: '#278fc0', roughness: 0.16, metalness: 0.2,
-      transparent: true, opacity: 0.82, depthWrite: false,
-    })
-    const vegetationMat = new THREE.MeshStandardMaterial({
-      color: '#3f9b55', roughness: 0.94, metalness: 0,
-      transparent: true, opacity: 0.48, depthWrite: false,
-    })
-    this._ownedMaterials.add(waterMat)
-    this._ownedMaterials.add(vegetationMat)
-    for (const feature of environment.water || []) addPolygon(groups.WATER, feature, waterMat, 0.18)
-    for (const feature of environment.landcover || []) addPolygon(groups.VEGETATION, feature, vegetationMat, 0.10)
-
-    const roadMat = new THREE.MeshStandardMaterial({ color: '#68665f', roughness: 0.98, metalness: 0 })
-    this._ownedMaterials.add(roadMat)
-    for (const road of environment.roads || []) {
-      const path = road?.path || []
-      if (path.length < 2) continue
-      const width = Math.max(0.8, Number(road.width_m) || 4)
-      const vertices = []
-      for (let i = 0; i < path.length; i++) {
-        const prev = path[Math.max(0, i - 1)]
-        const next = path[Math.min(path.length - 1, i + 1)]
-        const dx = (Number(next[0]) - Number(prev[0])) * sx
-        const dz = (Number(next[1]) - Number(prev[1])) * sy
-        const len = Math.hypot(dx, dz) || 1
-        const nx = -dz / len * width * 0.5
-        const nz = dx / len * width * 0.5
-        const x = Number(path[i][0]) * sx - ox
-        const z = -(Number(path[i][1]) * sy - oz)
-        vertices.push(x - nx, yFor(road, 0.08), z - nz, x + nx, yFor(road, 0.08), z + nz)
-      }
-      const indices = []
-      for (let i = 0; i < path.length - 1; i++) {
-        const a = i * 2, b = i * 2 + 1, c = i * 2 + 2, d = i * 2 + 3
-        indices.push(a, c, b, b, c, d)
-      }
-      const geometry = new THREE.BufferGeometry()
-      geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3))
-      geometry.setIndex(indices)
-      geometry.computeVertexNormals()
-      const mesh = new THREE.Mesh(geometry, roadMat)
-      groups.ROADS.add(mesh)
-      this._ownedGeometries.add(geometry)
-    }
-
-    for (const tree of environment.trees || []) {
-      const point = tree?.point || []
-      if (point.length !== 2) continue
-      const x = Number(point[0]) * sx - ox
-      const z = -(Number(point[1]) * sy - oz)
-      const height = Math.max(2.5, Number(tree.height) || 8)
-      const radius = Math.max(1.0, Number(tree.canopy_radius) || height * 0.3)
-      const treeGroup = new THREE.Group()
-      const trunkMaterial = new THREE.MeshStandardMaterial({ color: '#6c4d32', roughness: 1 })
-      const canopyMaterial = new THREE.MeshStandardMaterial({ color: '#2f8b4b', roughness: 0.92 })
-      this._ownedMaterials.add(trunkMaterial)
-      this._ownedMaterials.add(canopyMaterial)
-      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(Math.max(0.16, radius * 0.12), Math.max(0.22, radius * 0.15), height * 0.45, 7), trunkMaterial)
-      const canopy = new THREE.Mesh(new THREE.ConeGeometry(radius, height * 0.72, 8), canopyMaterial)
-      trunk.position.y = height * 0.225
-      canopy.position.y = height * 0.64
-      treeGroup.add(trunk, canopy)
-      treeGroup.position.set(x, yFor(tree, 0), z)
-      treeGroup.userData.featureId = tree.id ?? null
-      groups.TREES.add(treeGroup)
-      this._ownedGeometries.add(trunk.geometry)
-      this._ownedGeometries.add(canopy.geometry)
-      this.structurePeakH = Math.max(this.structurePeakH, treeGroup.position.y + height)
-    }
-
-    for (const [name, group] of Object.entries(groups)) {
-      if (!group.children.length) continue
-      group.scale.y = this.zScale
-      this.layerGroups[name] = group
-      this.scene.add(group)
-    }
-    this.structGroup = this.layerGroups.BUILDINGS || null
-    this.onLoad({ ok: true, groups: this.layerNames(), structureCount: added })
+    if (!added) return
+    group.scale.y = this.zScale
+    this.structGroup = group
+    this.scene.add(group)
   }
 
   _removeStructures() {
-    for (const group of Object.values(this.layerGroups || {})) this.scene.remove(group)
-    this.layerGroups = {}
-    this.structGroup = null
-  }
-
-  layerNames() {
-    const terrain = this.mesh ? [{ id: 'TERRAIN', label: 'Terrain', count: 1 }] : []
-    return terrain.concat(Object.entries(this.layerGroups).map(([id, group]) => ({
-      id,
-      label: ({ BUILDINGS: 'Buildings', WATER: 'Water', VEGETATION: 'Vegetation', TREES: 'Trees', ROADS: 'Roads' })[id] || id,
-      count: group.children.length,
-    })))
-  }
-
-  setLayerVisible(group, visible) {
-    if (group === 'TERRAIN' && this.mesh) this.mesh.visible = !!visible
-    else if (this.layerGroups[group]) this.layerGroups[group].visible = !!visible
+    if (this.structGroup) {
+      this.scene.remove(this.structGroup)
+      this.structGroup = null
+    }
   }
 
   _removeContext() {
@@ -993,7 +762,6 @@ export class TerrainViewer {
     this.matHybrid = null
     this.matWire = null
     this.matCurrent = null
-    this.structurePeakH = 0
     this.mesh = null
   }
 
@@ -1169,7 +937,7 @@ export class TerrainViewer {
     pos.needsUpdate = true
     // Building massing lives in the same normalized-height space, so it
     // rides exaggeration and the reveal displacement exactly.
-    for (const group of Object.values(this.layerGroups || {})) group.scale.y = scale * dispFactor
+    if (this.structGroup) this.structGroup.scale.y = scale * dispFactor
     if (recomputeNormals) this.mesh.geometry.computeVertexNormals()
   }
 
@@ -1284,19 +1052,6 @@ export class TerrainViewer {
     return hits.length ? hits[0] : null
   }
 
-  _pickBuilding(e) {
-    const group = this.layerGroups?.BUILDINGS
-    if (this.disposed || !group) return null
-    const rect = this.dom.getBoundingClientRect()
-    const ndc = new THREE.Vector2(
-      ((e.clientX - rect.left) / rect.width) * 2 - 1,
-      -((e.clientY - rect.top) / rect.height) * 2 + 1,
-    )
-    this.probeRay.setFromCamera(ndc, this.camera)
-    const hits = this.probeRay.intersectObject(group, true)
-    return hits.find((hit) => hit.object.userData?.buildingId != null) || null
-  }
-
   _onPointerMove(e) {
     if (this.disposed) return
     if (this.transitioning || !this.mesh) return
@@ -1341,12 +1096,6 @@ export class TerrainViewer {
       this.downInfo = null
       if (moved > 5 || dt > 400) return
     }
-    const buildingHit = this._pickBuilding(e)
-    if (buildingHit) {
-      this.onPick(buildingHit.object.userData.buildingId)
-      return
-    }
-    this.onPick(null)
     const hit = this._pick(e)
     if (!hit) return
     if (this.mode === 'fly' && this.fly.locked) return

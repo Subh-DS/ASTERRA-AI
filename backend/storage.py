@@ -49,6 +49,8 @@ class JobPaths:
     @property
     def model_glb(self): return self.reconstruction_dir / "model.glb"
     @property
+    def terrain_surface(self): return self.reconstruction_dir / "terrain_surface.tif"
+    @property
     def reconstruction_metadata(self): return self.reconstruction_dir / "metadata.json"
     @property
     def buildings_geojson(self): return self.reconstruction_dir / "buildings.geojson"

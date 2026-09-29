@@ -301,3 +301,57 @@ backups/
 *.pt
 *.pth
 *.ckpt
+@"
+# Python
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# ML models
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+*.onnx
+
+# Datasets / geospatial data
+datasets/
+data/
+*.tif
+*.tiff
+*.npy
+*.npz
+
+# Hugging Face / ML cache
+.cache/
+hf_cache/
+huggingface/
+Asterra-HF-Cache/
+
+# Frontend
+node_modules/
+.next/
+dist/
+build/
+
+# Generated outputs
+outputs/
+results/
+runs/
+logs/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+Thumbs.db
+.DS_Store
+"@ | Set-Content .gitignore

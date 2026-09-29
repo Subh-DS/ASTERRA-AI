@@ -74,6 +74,28 @@ for (const vp of [{ w: 1440, h: 900 }, { w: 1280, h: 800 }]) {
     (await pg.locator('.tourbar').count()) === 0)
   check(`${tag} meta HUD real values`, ((await pg.locator('.meta-hud').textContent()) || '').includes('EPSG'))
   check(`${tag} no h-overflow in twin`, await pg.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1))
+  const structureTab = pg.getByRole('tab', { name: /structures/i })
+  check(`${tag} structures scene available`, await structureTab.count() === 1 && await structureTab.isEnabled())
+  const shelf = pg.locator('.layerbox')
+  check(`${tag} metric geometry shelf visible`, await shelf.count() === 1)
+  if (await shelf.count()) {
+    const shelfLayout = await pg.evaluate(() => {
+      const panel = document.querySelector('.layerbox')
+      const rail = document.querySelector('.leftrail')
+      if (!panel || !rail) return false
+      const p = panel.getBoundingClientRect()
+      const r = rail.getBoundingClientRect()
+      return p.left >= r.right + 4 && p.top < window.innerHeight
+    })
+    check(`${tag} metric geometry clears left rail`, shelfLayout)
+    const toggle = pg.getByRole('button', { name: /metric geometry/i })
+    check(`${tag} metric geometry toggle exposed`, await toggle.count() === 1 && await toggle.getAttribute('aria-expanded') === 'true')
+    await toggle.click()
+    check(`${tag} metric geometry closes`, await toggle.getAttribute('aria-expanded') === 'false' && await shelf.locator('.layer-row').count() === 0)
+    await toggle.click()
+    check(`${tag} metric geometry reopens`, await toggle.getAttribute('aria-expanded') === 'true' && await shelf.locator('.layer-row').count() > 0)
+  }
+  check(`${tag} segmentation diagnostics absent`, !/segmentation diagnostics|segformer model/i.test((await pg.locator('.viewer-root').textContent()) || ''))
 
   // ANALYSIS + HAZARDS + STORM + LIGHT THEME
   await pg.getByRole('button', { name: /^analysis$/i }).click()

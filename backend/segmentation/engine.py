@@ -25,6 +25,7 @@ SEG_ENABLED = settings.segmentation_enabled
 SEG_MAX_SIDE = settings.segmentation_max_side
 SEG_MODEL_ID = settings.segmentation_model
 SEG_LOCAL_ONLY = getattr(settings, "segmentation_local_only", True)
+SEG_CACHE_DIR = getattr(settings, "segmentation_cache_dir", None)
 from .class_map import OTHER, ade_labels_to_ours
 
 
@@ -51,7 +52,7 @@ def _read_prep_config(model_id: str) -> dict:
             return prep
         from huggingface_hub import snapshot_download
 
-        d = snapshot_download(model_id, allow_patterns=["preprocessor_config.json"])
+        d = snapshot_download(model_id, allow_patterns=["preprocessor_config.json"], cache_dir=SEG_CACHE_DIR)
         import json as _json
         from pathlib import Path as _P
 
@@ -100,21 +101,16 @@ class SegformerModel(SegmentationModel):
                     self.device in ("auto", "cuda") and torch.cuda.is_available()
                 ) else "cpu"
                 self.torch_device = torch_device
-                # The HF image processor requires torchvision (not installed);
-                # preprocess manually with PIL/numpy instead (rescale +
-                # ImageNet normalize, params read from the checkpoint config).
-                try:
-                    from transformers import SegformerImageProcessor
-
-                    self.processor = SegformerImageProcessor.from_pretrained(
-                        self.model_id, local_files_only=SEG_LOCAL_ONLY
-                    )
-                    self._prep = None
-                except Exception:
-                    self.processor = None
-                    self._prep = _read_prep_config(self.model_id)
+                # Use the torchvision-free preprocessing path consistently.
+                # Some cached SegFormer checkpoints contain legacy processor
+                # keys (for example feature_extractor_type/reduce_labels) that
+                # newer Transformers versions warn about and ignore.  The
+                # model only needs the image mean/std and input size here, so
+                # read those values without constructing the processor.
+                self.processor = None
+                self._prep = _read_prep_config(self.model_id)
                 self.model = SegformerForSemanticSegmentation.from_pretrained(
-                    self.model_id, local_files_only=SEG_LOCAL_ONLY
+                    self.model_id, local_files_only=SEG_LOCAL_ONLY, cache_dir=SEG_CACHE_DIR
                 )
                 self.model.to(torch_device)
                 self.model.eval()
@@ -145,6 +141,7 @@ class SegformerModel(SegmentationModel):
             "dependency_available": dependency_available,
             "model_configured": bool(self.model_id),
             "local_only": SEG_LOCAL_ONLY,
+            "cache_dir": str(SEG_CACHE_DIR) if SEG_CACHE_DIR else None,
             "model": self.model_id if self.available else None,
             "device": getattr(self, "torch_device", None) if self.available else None,
             "reason": self.reason or dependency_reason,

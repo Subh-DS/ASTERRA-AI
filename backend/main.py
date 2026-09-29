@@ -1,4 +1,3 @@
-
 """FastAPI application for the ASTERRA production pipeline."""
 
 from contextlib import asynccontextmanager
@@ -105,6 +104,7 @@ def _artifact(job_id, name):
     result = manager.store.get(job_id).get("result") or {}
     mapping = {
         "dsm.tif": paths.metric_dsm if result.get("metric") else paths.relative_dsm,
+        "terrain_surface.tif": paths.terrain_surface,
         "model.glb": paths.model_glb,
         "buildings.geojson": paths.buildings_geojson,
         "environment.geojson": paths.environment_geojson,
@@ -283,11 +283,42 @@ def dsm_binary(job_id: str, token: str | None = None):
     return Response(data.tobytes(order="C"), media_type="application/octet-stream", headers={"X-DSM-Width": str(data.shape[1]), "X-DSM-Height": str(data.shape[0])})
 
 
+@app.get("/api/jobs/{job_id}/terrain.bin")
+def terrain_binary(job_id: str, token: str | None = None):
+    """Return the visualization-only bare-earth grid on the DSM grid."""
+    job = _job(job_id); _authorize(job, token)
+    import numpy as np
+    import rasterio
+    path = manager.store.paths(job_id).terrain_surface
+    if not path.exists():
+        # Backfill completed jobs created before the separated surface was
+        # introduced. This is deterministic, uses the same raw DSM and does
+        # not alter the exported measurement artifact.
+        try:
+            from visualization.terrain_surface import build_terrain_surface
+            result = job.get("result") or {}
+            build_terrain_surface(
+                _artifact(job_id, "dsm.tif"),
+                path,
+                buildings=result.get("buildings") or [],
+                environment=result.get("environment") or {},
+            )
+        except Exception as exc:
+            raise HTTPException(404, f"terrain surface is not ready: {exc}") from exc
+    with rasterio.open(path) as src:
+        data = src.read(1, masked=True).filled(np.nan).astype(np.float32)
+    return Response(
+        data.tobytes(order="C"),
+        media_type="application/octet-stream",
+        headers={"X-DSM-Width": str(data.shape[1]), "X-DSM-Height": str(data.shape[0]), "X-Surface": "visualization-only-bare-earth"},
+    )
+
+
 @app.get("/api/jobs/{job_id}/export/{artifact_name:path}")
 def export_artifact(job_id: str, artifact_name: str, token: str | None = None):
     job = _job(job_id); _authorize(job, token)
     path = _artifact(job_id, artifact_name)
-    media = {"dsm.tif": "image/tiff", "model.glb": "model/gltf-binary", "buildings.geojson": "application/geo+json", "environment.geojson": "application/geo+json", "mask.png": "image/png", "metadata.json": "application/json", "calibration-metadata.json": "application/json"}.get(artifact_name, "application/octet-stream")
+    media = {"dsm.tif": "image/tiff", "terrain_surface.tif": "image/tiff", "model.glb": "model/gltf-binary", "buildings.geojson": "application/geo+json", "environment.geojson": "application/geo+json", "mask.png": "image/png", "metadata.json": "application/json", "calibration-metadata.json": "application/json"}.get(artifact_name, "application/octet-stream")
     return FileResponse(path, media_type=media, filename=Path(artifact_name).name)
 
 

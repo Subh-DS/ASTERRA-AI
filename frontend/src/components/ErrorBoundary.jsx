@@ -21,18 +21,15 @@ export default class ErrorBoundary extends Component {
       return (
         <div className="size-notice">
           <div className="box">
-            <span className="eyebrow">ASTERRA</span>
+            <span className="eyebrow">DepthWizard</span>
             <h2>Something failed to render</h2>
             <p>
               {this.state.error?.message || 'Unexpected rendering error.'}
               {' '}Your data and the backend are unaffected.
             </p>
-            <p style={{ display: 'flex', gap: 8 }}>
-              <button type="button" className="btn primary" onClick={() => this.setState({ error: null })}>
-                Try again
-              </button>
-              <button type="button" className="btn" onClick={() => window.location.reload()}>
-                Reload page
+            <p>
+              <button type="button" className="btn primary" onClick={() => window.location.reload()}>
+                Reload
               </button>
             </p>
           </div>

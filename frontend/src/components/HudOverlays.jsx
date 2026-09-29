@@ -28,9 +28,7 @@ export default function HudOverlays({ viewerApi }) {
 
   useEffect(() => {
     let raf
-    let running = true
     const loop = () => {
-      if (!running) return
       raf = requestAnimationFrame(loop)
       if (!viewerApi) return
       const o = viewerApi.getOrientation()
@@ -40,21 +38,8 @@ export default function HudOverlays({ viewerApi }) {
         setScale((prev) => (sb?.label !== prev?.label || Math.abs((sb?.px || 0) - (prev?.px || 0)) > 2 ? sb : prev))
       }
     }
-    const onVisibility = () => {
-      running = !document.hidden
-      if (running) {
-        raf = requestAnimationFrame(loop)
-      } else {
-        cancelAnimationFrame(raf)
-      }
-    }
-    document.addEventListener('visibilitychange', onVisibility)
     raf = requestAnimationFrame(loop)
-    return () => {
-      running = false
-      document.removeEventListener('visibilitychange', onVisibility)
-      cancelAnimationFrame(raf)
-    }
+    return () => cancelAnimationFrame(raf)
   }, [viewerApi])
 
   const dsmMeta = dsm?.metadata || null

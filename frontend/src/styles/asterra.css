@@ -42,23 +42,6 @@
   border-bottom: 1px solid var(--asterra-line);
   box-shadow: 0 1px 12px rgba(0, 0, 0, 0.08);
 }
-.asterra-home-link {
-  pointer-events: auto;
-  background: none;
-  border: 1px solid var(--asterra-line);
-  border-radius: var(--r-2);
-  color: var(--paper-dim);
-  font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 0.08em;
-  padding: 4px 10px;
-  cursor: pointer;
-  transition: color 150ms ease, border-color 150ms ease;
-}
-.asterra-home-link:hover {
-  color: var(--paper);
-  border-color: var(--asterra-line-strong);
-}
 /* Inside the application the shell shrinks to a slim workspace bar, and every
    screen below inherits the shorter offset through --header-h. */
 .asterra-shell.internal {
@@ -562,11 +545,6 @@
   .wf-desc { font-size: 14.5px; }
   .wf-body { padding: 20px 22px; }
 }
-@media (max-width: 1200px) {
-  .wf-card { padding: 18px 16px; }
-  .wf-desc { font-size: 13.5px; }
-  .wf-body { padding: 16px 18px; }
-}
 @media (max-width: 860px) {
   .wf-grid { grid-template-columns: 1fr; }
   .wf { align-items: flex-start; }
@@ -797,7 +775,7 @@
 
 /* ---------- twin birth: reconstruction → 3D transition ---------- */
 .twin-birth-veil {
-  position: fixed;
+  position: absolute;
   inset: 0;
   z-index: 30;
   background: #000;
@@ -810,7 +788,7 @@
   to { opacity: 0; }
 }
 .twin-birth-splash {
-  position: fixed;
+  position: absolute;
   inset: 0;
   z-index: 31;
   display: flex;

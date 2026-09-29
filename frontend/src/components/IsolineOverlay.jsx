@@ -20,7 +20,8 @@ export default function IsolineOverlay() {
     const small = new Float32Array(n * n)
     for (let y = 0; y < n; y++) {
       for (let x = 0; x < n; x++) {
-        small[y * n + x] = dsm.heights[Math.floor((y / n) * dsmHeight) * dsmWidth + Math.floor((x / n) * dsmWidth)]
+        const surface = dsm.terrainHeights || dsm.heights
+        small[y * n + x] = surface[Math.floor((y / n) * dsmHeight) * dsmWidth + Math.floor((x / n) * dsmWidth)]
       }
     }
     f.setRealGrid(small, n, n, 1)

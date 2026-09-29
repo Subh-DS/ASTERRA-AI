@@ -96,6 +96,26 @@ def export_glb(mesh, output_path):
         exist_ok=True
     )
 
+    # The reconstruction code works in raster order (X east, Y north, Z
+    # elevation).  glTF/Three.js scenes are conventionally Y-up.  Apply one
+    # proper rotation at the export boundary so every consumer gets the same
+    # axis contract: X east, Y elevation, Z south.
+    y_up = np.array([
+        [1.0, 0.0, 0.0, 0.0],
+        [0.0, 0.0, 1.0, 0.0],
+        [0.0, -1.0, 0.0, 0.0],
+        [0.0, 0.0, 0.0, 1.0],
+    ], dtype=np.float64)
+    if isinstance(mesh, trimesh.Scene):
+        seen = set()
+        for geometry in mesh.geometry.values():
+            if id(geometry) in seen:
+                continue
+            seen.add(id(geometry))
+            geometry.apply_transform(y_up)
+    else:
+        mesh.apply_transform(y_up)
+
     mesh.export(
         output_path,
         file_type="glb"

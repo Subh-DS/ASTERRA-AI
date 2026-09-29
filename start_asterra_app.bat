@@ -9,12 +9,21 @@ set "PYTHON_ARGS="
 set "BACKEND_URL=http://127.0.0.1:8000/api/health"
 set "FRONTEND_URL=http://127.0.0.1:5173"
 
+rem SegFormer is the primary semantic backend. Download the checkpoint once
+rem into the configured cache and reuse it; failed loads remain a labelled
+rem heuristic fallback so terrain reconstruction still completes.
+if not defined ASTERRA_SEGMENTATION_LOCAL_ONLY set "ASTERRA_SEGMENTATION_LOCAL_ONLY=0"
+if not defined ASTERRA_PRELOAD_MODEL set "ASTERRA_PRELOAD_MODEL=1"
+if not defined ASTERRA_SEGMENTATION_TIMEOUT set "ASTERRA_SEGMENTATION_TIMEOUT=60"
+if not defined ASTERRA_SEGMENTATION_CACHE set "ASTERRA_SEGMENTATION_CACHE=%ROOT_DIR%backend\runtime\segmentation_cache"
+
 if not exist "%ROOT_DIR%backend\main.py" goto :missing_backend
 if not exist "%FRONTEND_DIR%\package.json" goto :missing_frontend
 
 if exist "%ROOT_DIR%.venv\Scripts\python.exe" (
   call :check_python "%ROOT_DIR%.venv\Scripts\python.exe"
   if not errorlevel 1 set "PYTHON_EXE=%ROOT_DIR%.venv\Scripts\python.exe"
+  if errorlevel 1 echo [WARN] The project virtual environment exists but its Python/dependencies are unavailable. Continuing with system Python discovery.
 )
 if not defined PYTHON_EXE for /f "delims=" %%P in ('where python 2^>nul') do if not defined PYTHON_EXE (
   call :check_python "%%P"
@@ -22,10 +31,29 @@ if not defined PYTHON_EXE for /f "delims=" %%P in ('where python 2^>nul') do if 
 )
 if not defined PYTHON_EXE (
   where py >nul 2>&1
-  if not errorlevel 1 py -3 -c "import fastapi,uvicorn,rasterio,torch,trimesh,transformers" >nul 2>&1
+  if not errorlevel 1 py -3 -c "import fastapi,uvicorn,multipart,pydantic,numpy,scipy,rasterio,torch,PIL,trimesh,transformers" >nul 2>&1
   if not errorlevel 1 (
     set "PYTHON_EXE=py"
     set "PYTHON_ARGS=-3"
+  )
+)
+rem A moved/removed base interpreter can leave .venv\Scripts\python.exe
+rem present but unusable. Reuse its installed packages with a compatible
+rem system Python before reporting that the backend is unavailable.
+if not defined PYTHON_EXE if exist "%LOCALAPPDATA%\Programs\Python\Python311\python.exe" (
+  call :check_python_with_project_packages "%LOCALAPPDATA%\Programs\Python\Python311\python.exe"
+  if not errorlevel 1 (
+    set "PYTHON_EXE=%LOCALAPPDATA%\Programs\Python\Python311\python.exe"
+    set "PYTHON_ARGS="
+    set "PYTHONPATH=%ROOT_DIR%.venv\Lib\site-packages"
+  )
+)
+if not defined PYTHON_EXE if exist "%ProgramFiles%\Python311\python.exe" (
+  call :check_python_with_project_packages "%ProgramFiles%\Python311\python.exe"
+  if not errorlevel 1 (
+    set "PYTHON_EXE=%ProgramFiles%\Python311\python.exe"
+    set "PYTHON_ARGS="
+    set "PYTHONPATH=%ROOT_DIR%.venv\Lib\site-packages"
   )
 )
 if not defined PYTHON_EXE goto :missing_python
@@ -69,7 +97,13 @@ start "" "%FRONTEND_URL%"
 goto :startup_success
 
 :check_python
-"%~1" -c "import fastapi,uvicorn,rasterio,torch,trimesh,transformers" >nul 2>&1
+"%~1" -c "import fastapi,uvicorn,multipart,pydantic,numpy,scipy,rasterio,torch,PIL,trimesh,transformers" >nul 2>&1
+exit /b %errorlevel%
+
+:check_python_with_project_packages
+set "CHECK_PYTHONPATH=%ROOT_DIR%.venv\Lib\site-packages"
+set "PYTHONPATH=%CHECK_PYTHONPATH%;%PYTHONPATH%"
+"%~1" -c "import fastapi,uvicorn,multipart,pydantic,numpy,scipy,rasterio,torch,PIL,trimesh,transformers" >nul 2>&1
 exit /b %errorlevel%
 
 :probe_url
@@ -98,8 +132,12 @@ echo [ERROR] Frontend package.json not found: %FRONTEND_DIR%\package.json
 goto :startup_failed
 
 :missing_python
-echo [ERROR] Python with FastAPI, Rasterio, Torch, Trimesh, and Transformers was not found.
+echo [ERROR] A compatible Python with the complete ASTERRA backend dependency set was not found.
+echo [INFO] Python discovery checked the project virtual environment, system Python, and the Python launcher.
+if exist "%ROOT_DIR%.venv\pyvenv.cfg" echo [INFO] If .venv points to a removed Python installation, recreate it with the commands below.
 echo Install once with:
+echo   py -3.11 -m venv "%ROOT_DIR%.venv"
+echo   "%ROOT_DIR%.venv\Scripts\python.exe" -m pip install -r "%ROOT_DIR%backend\requirements.txt"
 echo   python -m pip install -r "%ROOT_DIR%backend\requirements.txt"
 goto :startup_failed
 

@@ -70,11 +70,16 @@ class BuildingGlbTests(unittest.TestCase):
             self.assertTrue(any(name.startswith("ROAD_7_") for name in scene.geometry))
             self.assertTrue(any(name.startswith("WATER_8_") for name in scene.geometry))
             self.assertTrue(any(name.startswith("VEGETATION_TREE_9_") for name in scene.geometry))
+            building = next(scene.geometry[name] for name in scene.geometry if name.startswith("BUILDING_42_"))
             roof = next(scene.geometry[name] for name in scene.geometry if name.startswith("ROOF_BUILDING_42_"))
+            self.assertTrue(building.is_watertight)
+            self.assertTrue(roof.is_watertight)
             # GLB coordinates are local to the terrain vertical origin (100 m
-            # in this fixture), so the temple roof must exceed the local 9 m
-            # building roof rather than the absolute source elevation.
-            self.assertGreater(float(roof.vertices[:, 2].max()), 9.0)
+            # in this fixture), and the exported contract is Y-up. The temple
+            # roof must exceed the local 9 m building roof rather than the
+            # absolute source elevation.
+            self.assertGreater(float(roof.vertices[:, 1].max()), 9.0)
+            self.assertEqual(result["metadata"]["coordinate_system"], "Local Y-up mesh coordinates")
             self.assertEqual(result["metadata"]["buildings_detected"], 1)
             self.assertTrue(result["metadata"]["has_environment"])
             self.assertGreaterEqual(result["metadata"]["terrain_overrides"], 2)
@@ -127,9 +132,11 @@ class BuildingGlbTests(unittest.TestCase):
 
             scene = trimesh.load(root / "model.glb", force="scene")
             roof = next(scene.geometry[name] for name in scene.geometry if name.startswith("ROOF_BUILDING_7_"))
-            self.assertGreater(float(np.ptp(roof.vertices[:, 2])), 0.5)
+            self.assertGreater(float(np.ptp(roof.vertices[:, 1])), 0.5)
             self.assertEqual(result["metadata"]["reconstruction"]["roof_measured"], 1)
             self.assertEqual(result["metadata"]["environment_counts"]["semantic_layers"]["vegetation"], 1)
+            self.assertEqual(result["metadata"]["geometry_qa"]["building_meshes_watertight"], 1)
+            self.assertEqual(result["metadata"]["geometry_qa"]["building_roofs_watertight"], 1)
             self.assertTrue(np.isfinite(roof.visual.uv).all())
 
 

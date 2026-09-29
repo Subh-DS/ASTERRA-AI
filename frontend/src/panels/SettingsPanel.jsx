@@ -140,6 +140,17 @@ export default function SettingsPanel() {
                 </button>
               )}
             </div>
+            {!dsm.offline && !String(dsm.id).startsWith('OFFLINE') && (
+              <div className="export-row">
+                <div>
+                  <div className="what">Visualization terrain surface</div>
+                  <div className="detail mono">Bare-earth .tif · raw DSM remains unchanged</div>
+                </div>
+                <a className="btn" href={api.exportUrl(dsm.id, 'terrain_surface.tif', dsm.fileToken)} download>
+                  Download .tif
+                </a>
+              </div>
+            )}
             <div className="export-row">
               <div>
                 <div className="what">3D Model (GLB)</div>

@@ -16,6 +16,12 @@ AOI = {"north": 20.305, "south": 20.295, "east": 85.81, "west": 85.80}
 
 
 class PipelineTerminationTests(unittest.TestCase):
+    def test_resolution_metadata_accepts_scalar_and_xy_pairs(self):
+        self.assertEqual(pipeline_module._mean_resolution_m(2.0), 2.0)
+        self.assertEqual(pipeline_module._mean_resolution_m((1.0, 3.0)), 2.0)
+        self.assertEqual(pipeline_module._mean_resolution_m([1.0, 3.0]), 2.0)
+        self.assertIsNone(pipeline_module._mean_resolution_m((None, "invalid")))
+
     def test_mocked_temple_job_reaches_terminal_state_with_hybrid_scene(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -74,7 +80,21 @@ class PipelineTerminationTests(unittest.TestCase):
                 "confidence": 0.62,
                 "source": "openstreetmap",
             }
-            environment = {"roads": [], "water": [], "landcover": [], "trees": []}
+            environment = {
+                "roads": [],
+                "water": [],
+                "landcover": [],
+                "trees": [],
+                "exclusion_zones": [{
+                    "id": 456,
+                    "name": "Mapped sports ground",
+                    "class": "sports_ground",
+                    "polygon": [[10, 10], [10, 30], [30, 30], [30, 10]],
+                    "polygon_projected": [[10, 86], [10, 66], [30, 66], [30, 86]],
+                    "ground_elevation": 100,
+                    "source": "openstreetmap",
+                }],
+            }
 
             def fake_materialize(_source, output, *_args, **_kwargs):
                 with rasterio.open(
@@ -159,6 +179,7 @@ class PipelineTerminationTests(unittest.TestCase):
             self.assertEqual(result["status"], "complete")
             self.assertTrue(all(stage["state"] == "done" for stage in result["stages"].values()))
             self.assertEqual(result["result"]["reconstruction"]["scene_quality"], "hybrid")
+            self.assertEqual(result["result"]["sports_ground_detection"]["count"], 1)
 
 
 if __name__ == "__main__":

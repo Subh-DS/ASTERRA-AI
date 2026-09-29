@@ -1,7 +1,7 @@
 export const API_URL =
   import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 
-async function jsonFetch(path, opts = {}, timeoutMs = 8000, retries = 2) {
+async function jsonFetch(path, opts = {}, timeoutMs = 8000) {
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), timeoutMs);
 
@@ -16,12 +16,6 @@ async function jsonFetch(path, opts = {}, timeoutMs = 8000, retries = 2) {
     }
 
     return await res.json();
-  } catch (err) {
-    if (retries > 0 && err.name !== 'AbortError') {
-      await new Promise((r) => setTimeout(r, 500));
-      return jsonFetch(path, opts, timeoutMs, retries - 1);
-    }
-    throw err;
   } finally {
     clearTimeout(t);
   }
@@ -48,7 +42,6 @@ export const api = {
         device: eng.fallback ? "fallback" : eng.device || null,
         model: eng.fallback ? "pseudo-fallback" : eng.model || null,
         modelLoaded: !!eng.model_loaded,
-        segmentation: eng.segmentation || null,
         queued: h.jobs_queued ?? 0,
         maxJobs: h.max_jobs ?? null,
       };
@@ -93,12 +86,12 @@ export const api = {
     );
   },
 
-  async getDsmBinary(jobId, timeoutMs = 120000) {
+  async getDsmBinary(jobId, timeoutMs = 120000, token = "") {
     const ctrl = new AbortController();
     const t = setTimeout(() => ctrl.abort(), timeoutMs);
     try {
       const res = await fetch(
-        `${API_URL}/api/jobs/${jobId}/dsm.bin`,
+        `${API_URL}/api/jobs/${jobId}/dsm.bin${token ? `?token=${encodeURIComponent(token)}` : ""}`,
         { signal: ctrl.signal }
       );
 
@@ -109,6 +102,21 @@ export const api = {
       const buf = await res.arrayBuffer();
 
       return new Float32Array(buf);
+    } finally {
+      clearTimeout(t);
+    }
+  },
+
+  async getTerrainBinary(jobId, timeoutMs = 120000, token = "") {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), timeoutMs);
+    try {
+      const res = await fetch(
+        `${API_URL}/api/jobs/${jobId}/terrain.bin${token ? `?token=${encodeURIComponent(token)}` : ""}`,
+        { signal: ctrl.signal },
+      );
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return new Float32Array(await res.arrayBuffer());
     } finally {
       clearTimeout(t);
     }
@@ -186,7 +194,6 @@ export class JobSocket {
     this.handlers = handlers;
     this.closedByUser = false;
     this.retries = 0;
-    this.retryTimeout = null;
 
     this.connect();
   }
@@ -231,12 +238,10 @@ export class JobSocket {
   fail() {
     if (this.retries < 6) {
       this.retries += 1;
-      const jitter = Math.random() * 200;
-      const delay = Math.min(500 * 2 ** this.retries, 6000) + jitter;
 
-      this.retryTimeout = setTimeout(
+      setTimeout(
         () => this.connect(),
-        delay
+        Math.min(500 * 2 ** this.retries, 6000)
       );
 
       this.handlers.onRetry?.(this.retries);
@@ -247,7 +252,6 @@ export class JobSocket {
 
   close() {
     this.closedByUser = true;
-    clearTimeout(this.retryTimeout);
     this.ws?.close();
   }
 }

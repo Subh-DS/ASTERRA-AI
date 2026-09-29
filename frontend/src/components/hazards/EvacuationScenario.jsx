@@ -73,7 +73,8 @@ export default function EvacuationScenario() {
 
   function compute() {
     setNote(null)
-    if (!dsm?.heights || !result) return
+    const terrainHeights = dsm?.terrainHeights || dsm?.heights
+    if (!terrainHeights || !result) return
     setComputing(true)
     try {
       const W = dsm.width
@@ -113,7 +114,7 @@ export default function EvacuationScenario() {
         setNote('No passable ground adjacent to the hazard — the area is fully enclosed.')
         return
       }
-      const { h } = downsampleGrid(dsm.heights, W, H, N)
+      const { h } = downsampleGrid(terrainHeights, W, H, N)
       const slope = slopeGrid(h, N)
       // Unknown terrain is impassable — routes only cross measured ground.
       for (let i = 0; i < N * N; i++) {
@@ -121,7 +122,13 @@ export default function EvacuationScenario() {
       }
       // Safe zones must themselves be passable — never inside the hazard.
       const goals = pickGoals(h, slope, N, 5).filter((gl) => !blocked[gl.y * N + gl.x]).slice(0, 3)
-
+      console.info('[evac-debug]', JSON.stringify({
+        blocked: blocked.reduce((a, b) => a + b, 0),
+        start,
+        goals: goals.map((g) => [g.x, g.y]),
+        nanH: [...h].filter((v) => !Number.isFinite(v)).length,
+        nanS: [...slope].filter((v) => !Number.isFinite(v)).length,
+      }))
       if (!goals.length) {
         setNote('No reachable high ground outside the hazard on this terrain.')
         return
@@ -246,8 +253,7 @@ export default function EvacuationScenario() {
 
   return (
     <div>
-      <button type="button" className="hz-run" disabled={computing} onClick={compute} aria-busy={computing}>
-        {computing && <span className="hz-spinner" aria-hidden="true" />}
+      <button type="button" className="hz-run" disabled={computing} onClick={compute}>
         {computing ? 'Routing…' : evac ? 'Recalculate routes' : 'Compute evacuation routes'}
       </button>
       {note && <div className="hz-error" role="alert">{note}</div>}

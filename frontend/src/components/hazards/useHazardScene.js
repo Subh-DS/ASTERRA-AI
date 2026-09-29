@@ -48,11 +48,12 @@ export function useHazardScene() {
 
   useEffect(() => {
     const ctrl = ctrlRef.current
-    if (!ctrl || !result || !dsm?.heights) return
+    if (!ctrl || !result || !(dsm?.terrainHeights || dsm?.heights)) return
     decodeGrids(result)
     const H = result.terrain_source.grid[0]
     const W = result.terrain_source.grid[1]
-    const heights = (dsm.width === W && dsm.height === H) ? dsm.heights : null
+    const terrainHeights = dsm.terrainHeights || dsm.heights
+    const heights = (dsm.width === W && dsm.height === H) ? terrainHeights : null
     try {
       if (result.simulation_type === 'coastal_inundation') {
         ctrl.showCoastal(result, heights)

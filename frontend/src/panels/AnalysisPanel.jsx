@@ -43,9 +43,9 @@ export default function AnalysisPanel() {
     return <p className="empty-note">Terrain analysis appears here once a DSM is computed.</p>
   }
 
-  const maxH = heightHist.h.reduce((a, b) => Math.max(a, b), 0)
+  const maxH = Math.max(...heightHist.h)
   const hotBin = heightHist.h.indexOf(maxH)
-  const maxS = slopeHist.reduce((a, b) => Math.max(a, b), 0)
+  const maxS = Math.max(...slopeHist)
   const mode = dsmModeInfo(dsm)
   const isMetric = mode.isMetric
   const unit = mode.unitLabel
@@ -80,7 +80,7 @@ export default function AnalysisPanel() {
           {dsm.reconstruction && (
             <>
               <dt>Reconstruction</dt>
-              <dd>{dsm.reconstruction.mode === 'structure-aware' ? `structure-aware · ${dsm.reconstruction.buildings_detected} buildings` : 'DSM-only mesh (segmentation unavailable)'}</dd>
+              <dd>{dsm.reconstruction.mode === 'structure-aware' ? `structure-aware · ${dsm.reconstruction.buildings_detected} buildings` : 'DSM-only mesh'}</dd>
             </>
           )}
           {dsm.source?.type === 'map' && dsm.source.imagery && (

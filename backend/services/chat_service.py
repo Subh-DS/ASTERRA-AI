@@ -8,6 +8,13 @@ system prompt. Falls back to the local knowledge base if the API is unavailable.
 """
 
 import os
+from pathlib import Path
+
+# Load .env file from project root (two levels up from backend/services/)
+_env_path = Path(__file__).resolve().parents[2] / ".env"
+if _env_path.exists():
+    from dotenv import load_dotenv
+    load_dotenv(_env_path)
 
 
 
@@ -353,7 +360,7 @@ GEOSPATIAL_KB = {
     "segformer": {
         "keywords": ["segformer", "segmentation model", "nvidia", "ade20k"],
         "response": (
-            "**SegFormer**" (NVIDIA, ADE20K fine-tuned) is the semantic segmentation model used by "
+            "**SegFormer** (NVIDIA, ADE20K fine-tuned) is the semantic segmentation model used by "
             "ASTERRA for land cover classification. It produces pixel-level masks for buildings, "
             "vegetation, water, roads, and other categories. The model runs on GPU when available, "
             "with a deterministic RGB fallback for CPU-only environments."
@@ -371,7 +378,7 @@ GEOSPATIAL_KB = {
     "affine": {
         "keywords": ["affine", "transform", "scale factor", "linear fit"],
         "response": (
-            An **affine transform** maps relative depth to metric elevation via Z = a·d + b, where "
+            "An **affine transform** maps relative depth to metric elevation via Z = a·d + b, where "
             "`a` is the scale factor and `b` is the vertical offset. ASTERRA fits this transform "
             "using RANSAC against reference DEM samples or GCPs, recording the parameters in "
             "calibration metadata."
