@@ -15,11 +15,12 @@ import AssistantDock from './components/AssistantDock'
 import LoadingOverlay from './components/LoadingOverlay'
 
 function useSmallScreen() {
-  const [small, setSmall] = useState(window.innerWidth < 768)
+  const [small, setSmall] = useState(() => window.matchMedia('(max-width: 767px)').matches)
   useEffect(() => {
-    const fn = () => setSmall(window.innerWidth < 768)
-    window.addEventListener('resize', fn)
-    return () => window.removeEventListener('resize', fn)
+    const mq = window.matchMedia('(max-width: 767px)')
+    const fn = (e) => setSmall(e.matches)
+    mq.addEventListener('change', fn)
+    return () => mq.removeEventListener('change', fn)
   }, [])
   return small
 }

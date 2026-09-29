@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useApp } from '../store/useAppStore'
-import mapVisual from '../assets/workflow-map.webp'
-import reconstructionVisual from '../assets/workflow-reconstruction.webp'
+import mapVisual from '../assets/workflow-map.svg'
+import reconstructionVisual from '../assets/workflow-reconstruction.svg'
 
 const COMMIT_MS = 480
 

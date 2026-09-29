@@ -46,8 +46,23 @@ export default function LoadingOverlay() {
   const stages = Object.entries(job.stages || {})
   const total = stages.length || 4
   const doneCount = stages.filter(([, s]) => s.state === 'done').length
-  // The rail owns the complete and error states — the indicator steps aside.
-  if (job.error || doneCount >= total) return null
+  // The rail owns the complete state — the indicator steps aside.
+  if (doneCount >= total) return null
+  // Show a brief error state in the overlay before the rail takes over.
+  if (job.error) {
+    return (
+      <div className="loading-overlay" role="alert">
+        <div className="loading-content live">
+          <div className="loading-top">
+            <span className="loading-stage">ERROR</span>
+          </div>
+          <div className="loading-row">
+            <span className="loading-sub">{job.error}</span>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   const current = stages.find(([, s]) => s.state === 'active')
   const live = !!current

@@ -69,6 +69,14 @@ export default function AppShell({ children }) {
           <span className="asterra-section">
             Asterra <span aria-hidden="true">·</span> {SECTION_LABEL[screen] || 'Workspace'}
           </span>
+          <button
+            className="asterra-home-link"
+            onClick={() => useApp.getState().setScreen('hero')}
+            title="Back to home"
+            aria-label="Back to home"
+          >
+            ← Home
+          </button>
           <div className="asterra-status">
             <span
               className="asterra-backend"

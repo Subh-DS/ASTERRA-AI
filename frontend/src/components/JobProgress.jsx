@@ -123,9 +123,11 @@ export default function JobProgress() {
               src={textureUrl}
               alt="Processing input as seen by the backend"
               className="preview"
+              onLoad={(e) => { e.currentTarget.style.opacity = '1' }}
               onError={(e) => {
                 e.currentTarget.style.display = 'none'
               }}
+              style={{ opacity: 0, transition: 'opacity 300ms ease' }}
             />
             <span className="mono">backend view · texture staged for 3D mesh</span>
           </div>

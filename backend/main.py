@@ -341,6 +341,29 @@ async def frontend_job_socket(websocket: WebSocket, job_id: str):
     await _ws_job(websocket, job_id)
 
 
+@app.post("/api/chat")
+async def chat_endpoint(payload: dict):
+    """Geospatial-only chat endpoint for the field assistant."""
+    try:
+        from .services.chat_service import chat_service
+    except ImportError:
+        from backend.services.chat_service import chat_service
+
+    messages = payload.get("messages", [])
+    if not isinstance(messages, list):
+        raise HTTPException(400, "messages must be a list")
+
+    # Validate message format
+    for msg in messages:
+        if not isinstance(msg, dict) or "role" not in msg or "content" not in msg:
+            raise HTTPException(400, "each message must have 'role' and 'content'")
+        if msg["role"] not in ("user", "assistant"):
+            raise HTTPException(400, "role must be 'user' or 'assistant'")
+
+    reply = chat_service.reply(messages)
+    return {"reply": reply}
+
+
 @app.post("/api/jobs/{job_id}/validate")
 async def validate_reference(job_id: str, reference: UploadFile = File(...)):
     job = _job(job_id)

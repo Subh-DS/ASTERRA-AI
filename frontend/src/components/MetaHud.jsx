@@ -35,7 +35,7 @@ export default function MetaHud({ dsm, viewerApi }) {
   if (g0 != null && g1 != null && g0 !== g1) gsd = `${g0} × ${g1} m`
   else if (g0 != null) gsd = `${g0} m`
 
-  let elev = '—'
+  let elev = viewerApi ? 'Loading…' : '—'
   try {
     const hm = viewerApi?.getHeightMapping?.()
     if (hm && Number.isFinite(hm.minH) && Number.isFinite(hm.maxH)) {
@@ -45,9 +45,9 @@ export default function MetaHud({ dsm, viewerApi }) {
     /* mapping unavailable before first load */
   }
 
-  let cam = '—'
+  let cam = viewerApi ? 'Loading…' : '—'
   try {
-    cam = viewerApi?.getCamRange?.()?.label || '—'
+    cam = viewerApi?.getCamRange?.()?.label || 'Loading…'
   } catch {
     /* camera not ready */
   }

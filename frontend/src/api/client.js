@@ -1,7 +1,7 @@
 export const API_URL =
   import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 
-async function jsonFetch(path, opts = {}, timeoutMs = 8000) {
+async function jsonFetch(path, opts = {}, timeoutMs = 8000, retries = 2) {
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), timeoutMs);
 
@@ -16,6 +16,12 @@ async function jsonFetch(path, opts = {}, timeoutMs = 8000) {
     }
 
     return await res.json();
+  } catch (err) {
+    if (retries > 0 && err.name !== 'AbortError') {
+      await new Promise((r) => setTimeout(r, 500));
+      return jsonFetch(path, opts, timeoutMs, retries - 1);
+    }
+    throw err;
   } finally {
     clearTimeout(t);
   }
@@ -180,6 +186,7 @@ export class JobSocket {
     this.handlers = handlers;
     this.closedByUser = false;
     this.retries = 0;
+    this.retryTimeout = null;
 
     this.connect();
   }
@@ -224,10 +231,12 @@ export class JobSocket {
   fail() {
     if (this.retries < 6) {
       this.retries += 1;
+      const jitter = Math.random() * 200;
+      const delay = Math.min(500 * 2 ** this.retries, 6000) + jitter;
 
-      setTimeout(
+      this.retryTimeout = setTimeout(
         () => this.connect(),
-        Math.min(500 * 2 ** this.retries, 6000)
+        delay
       );
 
       this.handlers.onRetry?.(this.retries);
@@ -238,6 +247,7 @@ export class JobSocket {
 
   close() {
     this.closedByUser = true;
+    clearTimeout(this.retryTimeout);
     this.ws?.close();
   }
 }

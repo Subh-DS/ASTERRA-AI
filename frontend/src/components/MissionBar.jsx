@@ -90,7 +90,7 @@ export default function MissionBar() {
   }
 
   return (
-    <div className="mission-bar" role="status" aria-label={`Mission: ${trail[stageIdx]}. ${context}`}>
+    <div className="mission-bar" role="status" aria-live="polite" aria-label={`Mission: ${trail[stageIdx]}. ${context}`}>
       <span className="ms-trail" aria-hidden="true">
         {trail.map((t, i) => (
           <span key={t} className="ms-seg">
