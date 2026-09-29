@@ -3,8 +3,8 @@ import { useApp } from '../store/useAppStore'
 import { getAssistantReply } from '../api/assistant'
 
 const SUGGESTIONS = {
-  hero: ['What does this app do?', 'Explain the pipeline', 'Load a sample scene'],
-  upload: ['What are ground control points?', 'Do I need a GeoTIFF?'],
+  hero: ['What is a DSM?', 'Explain the pipeline', 'What is the difference between DSM and DTM?'],
+  upload: ['What are ground control points?', 'What is a GeoTIFF?'],
   progress: ['Which stage is running?', 'How does calibration work?'],
   viewer: ['Set exaggeration to 2.5', 'Switch to fly mode', 'Toggle isolines', 'What is the RMSE?'],
 }
@@ -14,13 +14,15 @@ function stamp() {
   return [d.getHours(), d.getMinutes(), d.getSeconds()].map((n) => String(n).padStart(2, '0')).join(':')
 }
 
+function sanitizeHtml(text) {
+  const div = document.createElement('div')
+  div.textContent = String(text ?? '')
+  return div.innerHTML
+}
+
 function formatMessage(text) {
-  return String(text ?? '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;')
+  const escaped = sanitizeHtml(text)
+  return escaped
     .replace(/`([^`]+)`/g, '<code class="inline-code">$1</code>')
     .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
     .replace(/\*([^*]+)\*/g, '<em>$1</em>')
@@ -104,7 +106,7 @@ export default function AssistantDock() {
           <div className="panel-head">
             <h2 style={{ fontSize: 'var(--t-20)' }}>Field Assistant</h2>
             <span className={`assistant-status mono${backendUp ? '' : ' local'}`}>
-              {backendUp === null ? '…' : backendUp ? 'LINKED' : 'LOCAL'}
+              {backendUp === null ? '…' : backendUp ? 'GEOSPATIAL AI' : 'LOCAL'}
             </span>
             <button className="btn ghost" onClick={clearTranscript} aria-label="Clear conversation" title="Clear">
               ⟲
@@ -117,10 +119,11 @@ export default function AssistantDock() {
           <div className="assistant-log" ref={listRef} aria-live="polite">
             {transcript.length === 0 && (
               <div className="assistant-seed">
-                <span className="eyebrow">DepthWizard copilot</span>
+                <span className="eyebrow">ASTERRA Field Assistant</span>
                 <p>
-                  I sit next to the pipeline and can fly it with you — ask for terrain stats, run commands like{' '}
-                  <span className="mono">set exaggeration to 3</span>, or just ask what you are looking at.
+                  I'm your geospatial copilot — I answer questions about elevation models, remote sensing,
+                  terrain analysis, photogrammetry, GIS, and the ASTERRA pipeline. I can also drive the
+                  viewer with commands like <span className="mono">set exaggeration to 3</span>.
                 </p>
               </div>
             )}

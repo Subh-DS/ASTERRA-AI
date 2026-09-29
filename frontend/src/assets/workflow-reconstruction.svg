@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300">
+  <rect width="400" height="300" fill="#0a1929"/>
+  <rect x="50" y="40" width="300" height="220" fill="#1a2a1a" rx="8"/>
+  <polygon points="80,220 140,140 200,180 260,100 330,200 330,240 80,240" fill="#2d5a3d" opacity="0.7"/>
+  <polygon points="80,220 140,140 200,180 260,100 330,200 330,220 80,230" fill="#3d7a4d" opacity="0.5"/>
+  <rect x="130" y="150" width="50" height="35" fill="#0a1929" opacity="0.6" rx="2"/>
+  <rect x="200" y="110" width="45" height="30" fill="#0a1929" opacity="0.6" rx="2"/>
+  <rect x="250" y="160" width="40" height="28" fill="#0a1929" opacity="0.6" rx="2"/>
+  <line x1="100" y1="250" x2="320" y2="250" stroke="#ffb74d" stroke-width="2" opacity="0.8"/>
+  <polygon points="100,250 320,250 320,240 100,240" fill="#ffb74d" opacity="0.3"/>
+  <text x="200" y="280" text-anchor="middle" fill="#ffb74d" font-family="monospace" font-size="12">DEPTH → DSM → 3D</text>
+</svg>

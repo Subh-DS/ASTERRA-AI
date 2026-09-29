@@ -43,9 +43,9 @@ export default function AnalysisPanel() {
     return <p className="empty-note">Terrain analysis appears here once a DSM is computed.</p>
   }
 
-  const maxH = Math.max(...heightHist.h)
+  const maxH = heightHist.h.reduce((a, b) => Math.max(a, b), 0)
   const hotBin = heightHist.h.indexOf(maxH)
-  const maxS = Math.max(...slopeHist)
+  const maxS = slopeHist.reduce((a, b) => Math.max(a, b), 0)
   const mode = dsmModeInfo(dsm)
   const isMetric = mode.isMetric
   const unit = mode.unitLabel

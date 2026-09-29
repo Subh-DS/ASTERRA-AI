@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useCallback } from 'react'
 import { parseLocationInput, searchPlaces } from '../../utils/aoi'
 
 // Accepts "lat, lon" or "lon, lat" style pairs; used only to give a precise
@@ -21,6 +21,17 @@ export default function LocationSearch({ onGo }) {
   const [results, setResults] = useState([])
   const [error, setError] = useState(null)
   const [busy, setBusy] = useState(false)
+  const [selectedIndex, setSelectedIndex] = useState(-1)
+  const inputRef = useRef(null)
+  const listRef = useRef(null)
+
+  const focusResult = useCallback((index) => {
+    if (!listRef.current) return
+    const items = listRef.current.querySelectorAll('button')
+    if (items[index]) {
+      items[index].focus()
+    }
+  }, [])
 
   async function submit(e) {
     e?.preventDefault()
@@ -63,7 +74,22 @@ export default function LocationSearch({ onGo }) {
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === 'Escape') setResults([])
+            if (e.key === 'Escape') {
+              setResults([])
+              setSelectedIndex(-1)
+            }
+            if (e.key === 'ArrowDown' && results.length) {
+              e.preventDefault()
+              const next = Math.min(selectedIndex + 1, results.length - 1)
+              setSelectedIndex(next)
+              focusResult(next)
+            }
+            if (e.key === 'ArrowUp' && results.length) {
+              e.preventDefault()
+              const prev = Math.max(selectedIndex - 1, 0)
+              setSelectedIndex(prev)
+              focusResult(prev)
+            }
           }}
           placeholder="Search place or paste lat, lon…"
           aria-label="Search location"
@@ -74,10 +100,14 @@ export default function LocationSearch({ onGo }) {
       </form>
       {error && <div className="map-error" role="alert">{error}</div>}
       {!!results.length && (
-        <ul className="map-search-results">
+        <ul className="map-search-results" ref={listRef} role="listbox" aria-label="Search results">
           {results.map((r, i) => (
-            <li key={i}>
-              <button type="button" onClick={() => { onGo({ lat: r.lat, lon: r.lon, bbox: r.bbox, name: r.name }); setResults([]) }}>
+            <li key={i} role="option" aria-selected={i === selectedIndex}>
+              <button
+                type="button"
+                tabIndex={i === selectedIndex ? 0 : -1}
+                onClick={() => { onGo({ lat: r.lat, lon: r.lon, bbox: r.bbox, name: r.name }); setResults([]); setSelectedIndex(-1) }}
+              >
                 <span>{r.name.length > 90 ? `${r.name.slice(0, 90)}…` : r.name}</span>
                 <span className="mono tiny">
                   {Number.isFinite(r.lat) && Number.isFinite(r.lon) ? `${r.lat.toFixed(4)}, ${r.lon.toFixed(4)}` : ''}

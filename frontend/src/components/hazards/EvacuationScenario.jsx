@@ -121,13 +121,7 @@ export default function EvacuationScenario() {
       }
       // Safe zones must themselves be passable — never inside the hazard.
       const goals = pickGoals(h, slope, N, 5).filter((gl) => !blocked[gl.y * N + gl.x]).slice(0, 3)
-      console.info('[evac-debug]', JSON.stringify({
-        blocked: blocked.reduce((a, b) => a + b, 0),
-        start,
-        goals: goals.map((g) => [g.x, g.y]),
-        nanH: [...h].filter((v) => !Number.isFinite(v)).length,
-        nanS: [...slope].filter((v) => !Number.isFinite(v)).length,
-      }))
+
       if (!goals.length) {
         setNote('No reachable high ground outside the hazard on this terrain.')
         return
@@ -252,7 +246,8 @@ export default function EvacuationScenario() {
 
   return (
     <div>
-      <button type="button" className="hz-run" disabled={computing} onClick={compute}>
+      <button type="button" className="hz-run" disabled={computing} onClick={compute} aria-busy={computing}>
+        {computing && <span className="hz-spinner" aria-hidden="true" />}
         {computing ? 'Routing…' : evac ? 'Recalculate routes' : 'Compute evacuation routes'}
       </button>
       {note && <div className="hz-error" role="alert">{note}</div>}

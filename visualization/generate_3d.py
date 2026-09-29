@@ -87,7 +87,7 @@ def _roof_surface_mesh(
     origin_y,
     vertical_origin,
     source_gsd_m=None,
-    min_valid_fraction=0.35,
+    min_valid_fraction=0.25,
 ):
     """Triangulate finite raw DSM samples that fall inside one footprint."""
 
@@ -114,7 +114,7 @@ def _roof_surface_mesh(
             out_shape=data.shape,
             transform=transform,
             invert=True,
-            all_touched=False,
+            all_touched=True,
         )
     except (TypeError, ValueError):
         return None, {"roof_surface_source": "unavailable:invalid-footprint", "roof_valid_fraction": 0.0}
@@ -123,7 +123,7 @@ def _roof_surface_mesh(
     valid_inside = inside & finite
     valid_count = int(valid_inside.sum())
     valid_fraction = valid_count / max(inside_count, 1)
-    if valid_count < 4 or valid_fraction < min_valid_fraction:
+    if valid_count < 3 or valid_fraction < min_valid_fraction:
         return None, {
             "roof_surface_source": "unavailable:insufficient-dsm",
             "roof_valid_fraction": round(valid_fraction, 4),
@@ -135,7 +135,7 @@ def _roof_surface_mesh(
     # explicit OSM/temple height with a half-metre slab. Keep the bounded
     # profile in that case and label it approximate; genuinely varying DSM
     # relief takes the measured path below.
-    if relief < 0.75 and float(building.get("height", 0.0) or 0.0) > 2.5:
+    if relief < 0.5 and float(building.get("height", 0.0) or 0.0) > 2.5:
         return None, {
             "roof_surface_source": "unavailable:flat-dsm",
             "roof_valid_fraction": round(valid_fraction, 4),
@@ -149,8 +149,8 @@ def _roof_surface_mesh(
     vertices = []
     ground_local = float(building.get("ground_elevation", vertical_origin)) - vertical_origin
     try:
-        roof_floor = ground_local + 0.5
-        roof_cap = ground_local + 45.0
+        roof_floor = ground_local + 0.3
+        roof_cap = ground_local + 50.0
         for index, (row, col) in enumerate(zip(rows, cols)):
             x = transform.c + (float(col) + 0.5) * transform.a + (float(row) + 0.5) * transform.b
             y = transform.f + (float(col) + 0.5) * transform.d + (float(row) + 0.5) * transform.e
@@ -205,7 +205,7 @@ def _building_mesh(building, origin_x, origin_y, vertical_origin, roof_elevation
     polygon = building.get("polygon_projected") or []
     if len(polygon) < 3:
         return None
-    ground = float(building.get("ground_elevation", vertical_origin)) - vertical_origin
+    ground = float(building.get("ground_elevation", vertical_origin)) - vertical_origin + 0.05
     roof_value = roof_elevation
     if roof_value is None:
         roof_value = float(building.get("roof_elevation", building.get("ground_elevation", vertical_origin)))
@@ -281,6 +281,67 @@ def _building_roof_mesh(building, origin_x, origin_y, vertical_origin, roof_surf
     if not len(faces):
         return None
     mesh = trimesh.Trimesh(vertices=vertices, faces=faces, process=False)
+    mesh.visual.material = SimpleMaterial(diffuse=(194, 168, 117, 255))
+    return mesh
+
+
+def _sloped_roof_mesh(building, origin_x, origin_y, vertical_origin, roof_surface=None):
+    """Create a sloped roof mesh when DSM data shows significant relief."""
+    polygon = building.get("polygon_projected") or []
+    if len(polygon) < 3:
+        return None
+    ring_xy = _ring_xy(building, origin_x, origin_y)
+    if len(ring_xy) < 3:
+        return None
+
+    if roof_surface is None or roof_surface.is_empty:
+        return None
+
+    # Use the DSM-sampled roof surface but add a ridge line for more
+    # realistic roof geometry when there's enough relief
+    measured = roof_surface.copy()
+    roof_verts = measured.vertices
+    if len(roof_verts) < 4:
+        return None
+
+    # Check if there's enough relief to justify a sloped roof
+    z_values = roof_verts[:, 2]
+    relief = float(np.percentile(z_values, 95) - np.percentile(z_values, 5))
+    if relief < 0.5:
+        return None
+
+    # Add a ridge line along the longest axis for a gabled roof effect
+    x_range = float(np.max(roof_verts[:, 0]) - np.min(roof_verts[:, 0]))
+    y_range = float(np.max(roof_verts[:, 1]) - np.min(roof_verts[:, 1]))
+
+    if x_range > y_range:
+        # Ridge along X axis
+        y_center = float(np.mean(roof_verts[:, 1]))
+        ridge_z = float(np.percentile(z_values, 90)) + 0.3
+        ridge_points = [
+            (float(np.min(roof_verts[:, 0])), y_center, ridge_z),
+            (float(np.max(roof_verts[:, 0])), y_center, ridge_z),
+        ]
+    else:
+        # Ridge along Y axis
+        x_center = float(np.mean(roof_verts[:, 0]))
+        ridge_z = float(np.percentile(z_values, 90)) + 0.3
+        ridge_points = [
+            (x_center, float(np.min(roof_verts[:, 1])), ridge_z),
+            (x_center, float(np.max(roof_verts[:, 1])), ridge_z),
+        ]
+
+    # Add ridge vertices and connect to existing roof
+    ridge_start = len(roof_verts)
+    all_verts = np.vstack((roof_verts, np.asarray(ridge_points, dtype=np.float32)))
+
+    # Find edge vertices and connect to ridge
+    faces = list(measured.faces)
+    edge_indices = np.where(np.bincount(measured.faces.ravel(), minlength=len(roof_verts)) == 1)[0]
+    for idx in edge_indices:
+        faces.append([int(idx), ridge_start, ridge_start + 1])
+
+    mesh = trimesh.Trimesh(vertices=all_verts, faces=np.asarray(faces, dtype=np.int64), process=False)
     mesh.visual.material = SimpleMaterial(diffuse=(194, 168, 117, 255))
     return mesh
 
@@ -490,6 +551,18 @@ def _scene_with_buildings(
             if texture_image is not None:
                 apply_rgb_texture(roof, texture_image, *(texture_bounds or (None, None)))
             scene.add_geometry(roof, node_name=f"ROOF_BUILDING_{identifier}_{added + 1}", geom_name=f"ROOF_BUILDING_{identifier}_{added + 1}")
+        # Add sloped roof overlay when DSM shows significant relief
+        sloped_roof = _sloped_roof_mesh(
+            building,
+            metadata["origin_x"],
+            metadata["origin_y"],
+            metadata["vertical_origin_m"],
+            roof_surface=roof_surface,
+        )
+        if sloped_roof is not None:
+            if texture_image is not None:
+                apply_rgb_texture(sloped_roof, texture_image, *(texture_bounds or (None, None)))
+            scene.add_geometry(sloped_roof, node_name=f"SLOPED_ROOF_{identifier}_{added + 1}", geom_name=f"SLOPED_ROOF_{identifier}_{added + 1}")
         added += 1
         building_vertices += len(mesh.vertices)
         building_faces += len(mesh.faces)
@@ -611,7 +684,7 @@ def run_reconstruction(
     )
     if progress_callback:
         progress_callback({"fraction": 0.55, "sub": "applying RGB texture"})
-    texture_image = load_rgb_texture_image(rgb_path, texture_width=size, texture_height=size)
+    texture_image = load_rgb_texture_image(rgb_path, texture_width=size * 2, texture_height=size * 2)
     texture_bounds = (
         (float(np.min(mesh.vertices[:, 0])), float(np.max(mesh.vertices[:, 0]))),
         (float(np.min(mesh.vertices[:, 1])), float(np.max(mesh.vertices[:, 1]))),

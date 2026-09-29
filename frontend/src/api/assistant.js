@@ -2,14 +2,21 @@ import { useApp } from '../store/useAppStore'
 import { api, API_URL } from './client'
 
 export async function remoteReply(messages) {
-  const res = await fetch(`${API_URL}/api/chat`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ messages: messages.slice(-12) }),
-  })
-  if (!res.ok) throw new Error(`HTTP ${res.status}`)
-  const data = await res.json()
-  return data.reply
+  const ctrl = new AbortController()
+  const timeout = setTimeout(() => ctrl.abort(), 30000)
+  try {
+    const res = await fetch(`${API_URL}/api/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages: messages.slice(-12) }),
+      signal: ctrl.signal,
+    })
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    const data = await res.json()
+    return data.reply
+  } finally {
+    clearTimeout(timeout)
+  }
 }
 
 function fmt(n, d = 2) {
@@ -157,10 +164,11 @@ export async function getAssistantReply(query) {
   if (state.backendUp) {
     try {
       return await remoteReply(state.transcript.map((m) => ({ role: m.role === 'you' ? 'user' : 'assistant', content: m.text })).concat([{ role: 'user', content: query }]))
-    } catch {
+    } catch (err) {
+      console.warn('[assistant] remote reply failed:', err?.message || err)
       /* fall through to local */
     }
   }
   if (local) return local
-  return 'Running in offline demo mode, so my knowledge stops at this instrument. In connected mode I answer open questions too — for now try commands like "set exaggeration to 3" or ask for the pipeline explanation.'
+  return 'I can only answer geospatial questions. Try asking about elevation models (DSM/DEM/DTM), remote sensing, terrain analysis, photogrammetry, GIS, LiDAR, SAR, building extraction, or the ASTERRA pipeline.'
 }

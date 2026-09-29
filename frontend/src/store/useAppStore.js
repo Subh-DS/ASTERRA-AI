@@ -73,7 +73,12 @@ export const useApp = create((set, get) => ({
 
   assistantOpen: false,
   setAssistantOpen: (v) =>
-    set((s) => ({ assistantOpen: v, ...(v && s.viewer.panelOpen ? { viewer: { ...s.viewer, panelOpen: null } } : {}) })),
+    set((s) => ({
+      assistantOpen: v,
+      // Opening the assistant closes the viewer panel to prevent overlap.
+      // This is intentional — the assistant dock and viewer panel share screen space.
+      ...(v && s.viewer.panelOpen ? { viewer: { ...s.viewer, panelOpen: null } } : {})
+    })),
 
   transcript: [],
   pushMessage: (msg) => set((s) => ({ transcript: [...s.transcript, msg] })),

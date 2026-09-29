@@ -73,22 +73,22 @@ export async function startMapJob({ aoi, provider = "auto", itemId = null, maxCl
 export function watchJob(jobId) {
   const { setStage } = useApp.getState()
   const socket = new JobSocket(jobId, {
-      onEvent: (evt) => {
-        if (STAGE_ORDER.includes(evt.stage)) {
-          setStage(evt.stage, evt.status || 'active', evt.sub || '')
-        }
-        if (evt.type === 'job_complete') {
-          socket.close()
-          finishFromReal(jobId)
-        }
-        if (evt.type === 'job_error') {
-          socket.close()
-          useApp.getState().setJobMeta({ error: evt.message })
-        }
-      },
-      onDead: () => useApp.getState().setBanner('Connection to processing service lost — results may be stale.'),
-    })
-    return socket
+    onEvent: (evt) => {
+      if (STAGE_ORDER.includes(evt.stage)) {
+        setStage(evt.stage, evt.status || 'active', evt.sub || '')
+      }
+      if (evt.type === 'job_complete') {
+        socket.close()
+        finishFromReal(jobId)
+      }
+      if (evt.type === 'job_error') {
+        socket.close()
+        useApp.getState().setJobMeta({ error: evt.message })
+      }
+    },
+    onDead: () => useApp.getState().setBanner('Connection to processing service lost — results may be stale.'),
+  })
+  return socket
 }
 
 export async function retryJob(jobId) {
@@ -138,11 +138,13 @@ async function finishFromReal(jobId) {
       pixelSizeM: meta.metadata?.pixel_size_m || null,
       fileToken,
     })  } catch (e) {
-    useApp.getState().setJobMeta({ error: `Result retrieval failed — ${e.message}` })
+    const message = `Result retrieval failed — ${e.message}`
+    useApp.getState().setJobMeta({ error: message })
+    throw new Error(message)
   }
 }
 
-async function pollJob(jobId, tries = 60) {
+async function pollJob(jobId, tries = 120) {
   for (let i = 0; i < tries; i++) {
     try {
       const s = await api.getJob(jobId)
@@ -177,7 +179,12 @@ function finish(dsm) {
     offline: dsm.offline || false
   }
   useApp.getState().setDsm(dsmData)
-  setTimeout(() => useApp.getState().setScreen('viewer'), 350)
+  // Use requestAnimationFrame to ensure the viewer is ready before transitioning
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      useApp.getState().setScreen('viewer')
+    })
+  })
 }
 
 function downsampleSize(n) {

@@ -188,16 +188,26 @@ export default function Uploader() {
                       {gcps.map((g) => (
                         <tr key={g.id}>
                           <td>{String(g.id).padStart(2, '0')}</td>
-                          {['lat', 'lon', 'elev'].map((k) => (
-                            <td key={k}>
-                              <input
-                                value={g[k]}
-                                inputMode="decimal"
-                                onChange={(e) => updateGcp(g.id, k, e.target.value)}
-                                aria-label={`${k} for point ${g.id}`}
-                              />
-                            </td>
-                          ))}
+                          {['lat', 'lon', 'elev'].map((k) => {
+                            const val = parseFloat(g[k])
+                            const isValid = Number.isFinite(val) && (
+                              k === 'lat' ? Math.abs(val) <= 90 :
+                              k === 'lon' ? Math.abs(val) <= 180 :
+                              true
+                            )
+                            return (
+                              <td key={k}>
+                                <input
+                                  value={g[k]}
+                                  inputMode="decimal"
+                                  onChange={(e) => updateGcp(g.id, k, e.target.value)}
+                                  aria-label={`${k} for point ${g.id}`}
+                                  aria-invalid={!isValid}
+                                  style={!isValid && g[k] ? { borderColor: 'var(--alert)' } : undefined}
+                                />
+                              </td>
+                            )
+                          })}
                           <td>
                             <button className="btn ghost" onClick={() => removeGcp(g.id)} aria-label={`Remove point ${g.id}`}>
                               ✕
@@ -231,6 +241,11 @@ export default function Uploader() {
         >
           Begin processing →
         </button>
+        {!gcpReady && hasFile && (
+          <span className="upload-hint" style={{ fontSize: 'var(--t-12)', color: 'var(--paper-dim)', marginTop: 4 }}>
+            Select "Generate Relative Surface" above, or use a georeferenced image for metric calibration.
+          </span>
+        )}
         <span className="mono" style={{ fontSize: 'var(--t-12)', color: 'var(--paper-dim)', letterSpacing: '0.08em' }}>
           depth inference runs on the connected backend when available, otherwise fully offline in demo mode
         </span>
