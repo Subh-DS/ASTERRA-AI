@@ -87,6 +87,7 @@ export class HazardLayers {
         vi += 4
       }
     }
+    if (vi === 0) return null
     const g = new THREE.BufferGeometry()
     g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3))
     g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3))
@@ -99,27 +100,92 @@ export class HazardLayers {
   }
 
   // ---- coastal ----
-  showCoastal(result, heights) {
+  showCoastal(result, heights, stride = 1) {
     this.clear()
     this.kind = 'coastal'
+    this._storeResult(result)
     const g = result.grids
-    const { minH, gw, gh } = this.mapping()
+    const { minH, gw, gh, maxH } = this.mapping()
     if (!gw) return
     const W2 = g.grid_w
     const H2 = g.grid_h
-    const s = g.grid_stride
+    const s = stride || g.grid_stride || 1
     const mask = g._maskU8
     const depth = g._depthF32
     const wl = result.statistics.water_level_m
-    const y = this.yFor(wl) + Math.max(0.02, (this.mapping().maxH - minH) * 0.002)
-    const colors = new Array(W2 * H2)
-    for (let i = 0; i < mask.length; i++) colors[i] = mask[i] ? depthColor(depth[i]) : [0, 0, 0]
-    const water = this._patchMesh(mask, H2, W2, s, gw, gh, () => y, colors, 0.72)
-    water.material.roughness = 0.18
-    water.material.metalness = 0.25
-    water.renderOrder = 5
-    this._track('water', water)
-    // shoreline: boundary cells → line segments
+    const waterY = this.yFor(wl)
+    const span = Math.max(0.001, (maxH ?? 1) - (minH ?? 0))
+
+    // Build terrain-conforming water surface with depth-based appearance
+    const pos = []
+    const col = []
+    const idx = []
+    const depthArr = []
+    let vi = 0
+    const H = result.terrain_source.grid[0]
+    const W = result.terrain_source.grid[1]
+    const sample = (r, c) => {
+      r = Math.min(H - 1, Math.max(0, Math.round(r)))
+      c = Math.min(W - 1, Math.max(0, Math.round(c)))
+      return heights ? heights[r * W + c] : 0
+    }
+
+    for (let gr = 0; gr < H2; gr++) {
+      for (let gc = 0; gc < W2; gc++) {
+        if (!mask[gr * W2 + gc]) continue
+        const [x0, z0] = this.cellXZ(gc, gr, s, gw, gh)
+        const [x1, z1] = this.cellXZ(gc + 1, gr + 1, s, gw, gh)
+        const d = depth[gr * W2 + gc]
+        // Water surface is slightly above the terrain at each point
+        const terrainY0 = this.yFor(sample(gr * s, gc * s))
+        const terrainY1 = this.yFor(sample(gr * s, (gc + 1) * s))
+        const terrainY2 = this.yFor(sample((gr + 1) * s, gc * s))
+        const terrainY3 = this.yFor(sample((gr + 1) * s, (gc + 1) * s))
+        // Water surface follows terrain + water level offset
+        const wy0 = Math.max(terrainY0, waterY) + 0.02
+        const wy1 = Math.max(terrainY1, waterY) + 0.02
+        const wy2 = Math.max(terrainY2, waterY) + 0.02
+        const wy3 = Math.max(terrainY3, waterY) + 0.02
+        const quad = [[x0, z0, wy0], [x1, z0, wy1], [x1, z1, wy3], [x0, z1, wy2]]
+        // Depth-based color: deeper = darker blue, shallower = lighter
+        const depthNorm = Math.min(1, d / 5.0)
+        const r = 0.15 + (1 - depthNorm) * 0.3
+        const gCol = 0.45 + (1 - depthNorm) * 0.35
+        const b = 0.65 + (1 - depthNorm) * 0.25
+        const alpha = 0.55 + depthNorm * 0.3
+        for (const [x, z, y] of quad) {
+          pos.push(x, y, z)
+          col.push(r, gCol, b)
+          depthArr.push(d)
+        }
+        idx.push(vi, vi + 2, vi + 1, vi, vi + 3, vi + 2)
+        vi += 4
+      }
+    }
+    if (vi > 0) {
+      const geo = new THREE.BufferGeometry()
+      geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3))
+      geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3))
+      geo.setIndex(idx)
+      geo.computeVertexNormals()
+      const mat = new THREE.MeshStandardMaterial({
+        vertexColors: true,
+        transparent: true,
+        opacity: 0.75,
+        roughness: 0.12,
+        metalness: 0.3,
+        side: THREE.DoubleSide,
+        depthWrite: false,
+      })
+      const water = new THREE.Mesh(geo, mat)
+      water.renderOrder = 5
+      this._track('water', water)
+      this._waterBaseY = waterY
+      this._waterBase = pos.slice()
+      this._waterDepth = depthArr
+    }
+
+    // Shoreline: boundary cells → line segments with foam effect
     const lp = []
     const at = (gr, gc) => (gr < 0 || gc < 0 || gr >= H2 || gc >= W2) ? 0 : mask[gr * W2 + gc]
     for (let gr = 0; gr < H2; gr++) {
@@ -127,35 +193,145 @@ export class HazardLayers {
         if (!at(gr, gc)) continue
         const [x0, z0] = this.cellXZ(gc, gr, s, gw, gh)
         const [x1, z1] = this.cellXZ(gc + 1, gr + 1, s, gw, gh)
-        if (!at(gr - 1, gc)) lp.push(x0, y, z0, x1, y, z0)
-        if (!at(gr + 1, gc)) lp.push(x0, y, z1, x1, y, z1)
-        if (!at(gr, gc - 1)) lp.push(x0, y, z0, x0, y, z1)
-        if (!at(gr, gc + 1)) lp.push(x1, y, z0, x1, y, z1)
+        const y0 = Math.max(this.yFor(sample(gr * s, gc * s)), waterY) + 0.05
+        const y1 = Math.max(this.yFor(sample(gr * s, (gc + 1) * s)), waterY) + 0.05
+        const y2 = Math.max(this.yFor(sample((gr + 1) * s, gc * s)), waterY) + 0.05
+        const y3 = Math.max(this.yFor(sample((gr + 1) * s, (gc + 1) * s)), waterY) + 0.05
+        if (!at(gr - 1, gc)) lp.push(x0, y0, z0, x1, y1, z0)
+        if (!at(gr + 1, gc)) lp.push(x0, y2, z1, x1, y3, z1)
+        if (!at(gr, gc - 1)) lp.push(x0, y0, z0, x0, y2, z1)
+        if (!at(gr, gc + 1)) lp.push(x1, y1, z0, x1, y3, z1)
       }
     }
-    const lg = new THREE.BufferGeometry()
-    lg.setAttribute('position', new THREE.Float32BufferAttribute(lp, 3))
-    const shore = new THREE.LineSegments(lg, new THREE.LineBasicMaterial({ color: 0xeaf6ff, transparent: true, opacity: 0.85 }))
-    this._track('shoreline', shore)
-    this._waterBaseY = y
-    // Ambient wave motion over the stored base positions (subtle — the
-    // flood extent itself always comes from the backend simulation).
-    const wp = water.geometry.attributes.position
-    this._waterBase = wp.array.slice()
+    if (lp.length > 0) {
+      const lg = new THREE.BufferGeometry()
+      lg.setAttribute('position', new THREE.Float32BufferAttribute(lp, 3))
+      const shore = new THREE.LineSegments(lg, new THREE.LineBasicMaterial({
+        color: 0xeaf6ff, transparent: true, opacity: 0.7,
+      }))
+      this._track('shoreline', shore)
+    }
+
     this.setT(1)
     this._startWaterAmbient()
   }
 
+  // ---- landslide susceptibility map ----
+  showSusceptibility(result, heights, stride = 1) {
+    this.clear()
+    this.kind = 'landslide_susceptibility'
+    this._storeResult(result)
+    const g = result.grids
+    const { minH, gw, gh } = this.mapping()
+    if (!gw) return
+    const W2 = g.grid_w
+    const H2 = g.grid_h
+    const s = stride || g.grid_stride || 1
+    const susceptibility = g._susceptibilityF32
+    const mask = g._maskU8
+    if (!susceptibility) return
+
+    // Create susceptibility overlay with color gradient
+    // Low (green) → Moderate (yellow) → High (orange) → Very High (red)
+    const colors = new Array(W2 * H2)
+    for (let i = 0; i < susceptibility.length; i++) {
+      const val = susceptibility[i]
+      if (val < 0.2) {
+        // Low: green
+        colors[i] = [0.2, 0.8, 0.2]
+      } else if (val < 0.4) {
+        // Moderate: yellow
+        colors[i] = [0.9, 0.9, 0.2]
+      } else if (val < 0.6) {
+        // High: orange
+        colors[i] = [0.95, 0.6, 0.1]
+      } else {
+        // Very High: red
+        colors[i] = [0.9, 0.1, 0.1]
+      }
+    }
+
+    // Render susceptibility map
+    const susceptMesh = this._patchMesh(mask, H2, W2, s, gw, gh, () => 0, colors, 0.5)
+    if (susceptMesh) {
+      // Position at terrain surface
+      const H = result.terrain_source.grid[0]
+      const W = result.terrain_source.grid[1]
+      const sample = (r, c) => {
+        r = Math.min(H - 1, Math.max(0, Math.round(r)))
+        c = Math.min(W - 1, Math.max(0, Math.round(c)))
+        return heights ? heights[r * W + c] : 0
+      }
+      const lift = 0.15
+      const yPatch = (gc, gr) => this.yFor(sample(gr * s, gc * s)) + lift
+      // Rebuild with correct Y positions
+      const pos = []
+      const col = []
+      const idx = []
+      let vi = 0
+      for (let gr = 0; gr < H2; gr++) {
+        for (let gc = 0; gc < W2; gc++) {
+          if (!mask[gr * W2 + gc]) continue
+          const [x0, z0] = this.cellXZ(gc, gr, s, gw, gh)
+          const [x1, z1] = this.cellXZ(gc + 1, gr + 1, s, gw, gh)
+          const c = colors[gr * W2 + gc]
+          const quad = [[x0, z0], [x1, z0], [x1, z1], [x0, z1]]
+          for (const [x, z] of quad) {
+            pos.push(x, yPatch(gc, gr, x, z), z)
+            col.push(c[0], c[1], c[2])
+          }
+          idx.push(vi, vi + 2, vi + 1, vi, vi + 3, vi + 2)
+          vi += 4
+        }
+      }
+      if (vi > 0) {
+        const geo = new THREE.BufferGeometry()
+        geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3))
+        geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3))
+        geo.setIndex(idx)
+        geo.computeVertexNormals()
+        const mat = new THREE.MeshStandardMaterial({
+          vertexColors: true, transparent: true, opacity: 0.55, roughness: 0.7, metalness: 0.0,
+        })
+        const mesh = new THREE.Mesh(geo, mat)
+        mesh.renderOrder = 4
+        this._track('susceptibility', mesh)
+      }
+    }
+
+    // Render source points (potential landslide initiation zones)
+    const sourcePoints = result.statistics?.source_points || []
+    if (sourcePoints.length > 0) {
+      const H = result.terrain_source.grid[0]
+      const W = result.terrain_source.grid[1]
+      for (const sp of sourcePoints) {
+        const r = Math.min(H - 1, Math.max(0, sp.row))
+        const c = Math.min(W - 1, Math.max(0, sp.col))
+        const [x, z] = this.cellXZ(c, r, s, gw, gh)
+        const y = this.yFor(heights ? heights[r * W + c] : 0) + 2
+        const marker = new THREE.Mesh(
+          new THREE.SphereGeometry(1.5, 12, 10),
+          new THREE.MeshBasicMaterial({ color: 0xff0000, transparent: true, opacity: 0.8 })
+        )
+        marker.position.set(x, y, z)
+        this._track(`source_${sp.row}_${sp.col}`, marker)
+      }
+    }
+
+    this.setT(1)
+  }
+
   // ---- landslide ----
-  showLandslide(result, heights) {
+  showLandslide(result, heights, stride = 1) {
     this.clear()
     this.kind = 'landslide'
+    this._storeResult(result)
     const g = result.grids
     const { gw, gh } = this.mapping()
     if (!gw) return
     const W2 = g.grid_w
     const H2 = g.grid_h
-    const s = g.grid_stride
+    const s = stride || g.grid_stride || 1
     const H = result.terrain_source.grid[0]
     const W = result.terrain_source.grid[1]
     const sample = (r, c) => {
@@ -165,15 +341,21 @@ export class HazardLayers {
     }
     const lift = 0.15
     const yPatch = (gc, gr) => this.yFor(sample(gr * s, gc * s)) + lift
+
+    // Compute terrain-following direction field for debris movement
+    const dirField = this._computeDirectionField(heights, H, W, s, gw, gh)
+
     const scar = this._patchMesh(g._sourceU8, H2, W2, s, gw, gh, yPatch, SCAR, 0.92)
-    this._track('scar', scar)
+    if (scar) this._track('scar', scar)
     const dep = this._patchMesh(g._depU8, H2, W2, s, gw, gh, yPatch, SOIL, 0.0)
-    this._track('deposition', dep)
-    // debris mass: source patch cloned, animated along keyframes
+    if (dep) this._track('deposition', dep)
+    // debris mass: source patch cloned, animated along terrain-following path
     const debris = this._patchMesh(g._sourceU8, H2, W2, s, gw, gh, yPatch, SOIL, 0.95)
+    if (!debris) return
     this._track('debris', debris)
     this._debrisBase = debris.geometry.attributes.position.array.slice()
-    // particles along the path polyline
+
+    // Particles follow terrain direction
     const path = result.polyline_px || []
     const R = rng(11)
     const pn = Math.min(400, Math.max(60, path.length * 8))
@@ -192,8 +374,35 @@ export class HazardLayers {
       color: 0x8a6f4d, size: 1.6, transparent: true, opacity: 0.0, sizeAttenuation: true,
     }))
     this._track('particles', pts)
-    this._slide = { result, sample, s, gw, gh, H, W }
+    this._slide = { result, sample, s, gw, gh, H, W, dirField }
     this.setT(0)
+  }
+
+  // Compute terrain-following direction field for debris movement
+  _computeDirectionField(heights, H, W, s, gw, gh) {
+    const dir = new Float32Array(gw * gh * 2)
+    for (let r = 0; r < gh; r++) {
+      for (let c = 0; c < gw; c++) {
+        const hr = Math.min(H - 1, Math.max(0, Math.round(r * s)))
+        const hc = Math.min(W - 1, Math.max(0, Math.round(c * s)))
+        const h0 = heights ? heights[hr * W + hc] : 0
+        // Sample neighbors for gradient
+        const hL = heights ? heights[hr * W + Math.max(0, hc - 1)] : h0
+        const hR = heights ? heights[hr * W + Math.min(W - 1, hc + 1)] : h0
+        const hU = heights ? heights[Math.max(0, hr - 1) * W + hc] : h0
+        const hD = heights ? heights[Math.min(H - 1, hr + 1) * W + hc] : h0
+        // Direction of steepest descent
+        let dx = hL - hR
+        let dz = hU - hD
+        const len = Math.sqrt(dx * dx + dz * dz) + 1e-6
+        dx /= len
+        dz /= len
+        const idx = (r * gw + c) * 2
+        dir[idx] = dx
+        dir[idx + 1] = dz
+      }
+    }
+    return dir
   }
 
   _waterWave(t) {
@@ -243,11 +452,13 @@ export class HazardLayers {
   }
 
   // ---- storm: rain + haze + dimmed light (pure visualization state) ----
-  setStorm(on) {
+  setStorm(on, intensity = 0.5) {
     this.storm = !!on
+    this.stormIntensity = Math.max(0, Math.min(1, intensity))
     const v = this.v
     if (on && !this.layers.rain) {
-      const n = 1200
+      // Particle count scales with intensity: 200 (light) to 3000 (heavy)
+      const n = Math.floor(200 + this.stormIntensity * 2800)
       const range = Math.max(300, (v.R || 200) * 1.4)
       const cx = v.orbitTarget?.x || 0
       const cy = v.orbitTarget?.y || 0
@@ -261,8 +472,13 @@ export class HazardLayers {
       }
       const g = new THREE.BufferGeometry()
       g.setAttribute('position', new THREE.BufferAttribute(pos, 3))
+      // Use streak-like appearance with elongated particles
       const pts = new THREE.Points(g, new THREE.PointsMaterial({
-        color: 0x9fb8c8, size: 1.4, transparent: true, opacity: 0.5, sizeAttenuation: true,
+        color: 0xa8c4d4,
+        size: 0.8 + this.stormIntensity * 1.2,
+        transparent: true,
+        opacity: 0.3 + this.stormIntensity * 0.4,
+        sizeAttenuation: true,
       }))
       this._stormRange = range
       this._track('rain', pts)
@@ -271,15 +487,15 @@ export class HazardLayers {
     const fog = v.scene.fog
     if (fog) {
       if (on && this._fogBase == null) this._fogBase = fog.density
-      if (this._fogBase != null) fog.density = on ? this._fogBase * 2.4 : this._fogBase
+      if (this._fogBase != null) fog.density = on ? this._fogBase * (1.5 + this.stormIntensity * 1.5) : this._fogBase
     }
     if (on && this._expBase == null) this._expBase = v.renderer.toneMappingExposure
     if (this._expBase != null) {
-      v.renderer.toneMappingExposure = on ? this._expBase * 0.8 : this._expBase
+      v.renderer.toneMappingExposure = on ? this._expBase * (0.9 - this.stormIntensity * 0.2) : this._expBase
     }
     if (v.sun) {
       if (on && this._sunBase == null) this._sunBase = v.sun.intensity
-      if (this._sunBase != null) v.sun.intensity = on ? this._sunBase * 0.65 : this._sunBase
+      if (this._sunBase != null) v.sun.intensity = on ? this._sunBase * (0.75 - this.stormIntensity * 0.2) : this._sunBase
     }
     if (on && !this.reducedMotion) this._startStormLoop()
     else this._stopStormLoop()
@@ -288,6 +504,10 @@ export class HazardLayers {
   _startStormLoop() {
     if (this._stormRaf) return
     let last = performance.now()
+    const intensity = this.stormIntensity || 0.5
+    // Fall speed and drift scale with intensity
+    const fallSpeed = 1.2 + intensity * 1.5
+    const driftSpeed = 0.08 + intensity * 0.15
     const tick = () => {
       if (this.disposed || !this.storm || !this.layers.rain) {
         this._stormRaf = 0
@@ -301,8 +521,8 @@ export class HazardLayers {
         const arr = rain.geometry.attributes.position.array
         const top = (this.v.orbitTarget?.y || 0) + this._stormRange * 0.7
         const bottom = (this.v.orbitTarget?.y || 0) - this._stormRange * 0.1
-        const fall = this._stormRange * 1.6 * dt
-        const drift = this._stormRange * 0.12 * dt
+        const fall = this._stormRange * fallSpeed * dt
+        const drift = this._stormRange * driftSpeed * dt
         for (let i = 0; i < arr.length; i += 3) {
           arr[i + 1] -= fall
           arr[i] += drift
@@ -620,6 +840,83 @@ export class HazardLayers {
 
   setGroupVisible(v) {
     this.group.visible = v
+  }
+
+  // ---- debugging / validation controls ----
+  setDebugMode(mode) {
+    // mode: 'none' | 'raw_mask' | 'terrain' | 'boundary'
+    this.debugMode = mode
+    if (mode === 'raw_mask') {
+      // Show only the raw hazard mask without visual effects
+      for (const k of Object.keys(this.layers)) {
+        if (k !== 'susceptibility' && k !== 'water') {
+          this.layers[k].visible = false
+        }
+      }
+    } else if (mode === 'terrain') {
+      // Show only terrain, hide all hazard layers
+      for (const k of Object.keys(this.layers)) {
+        this.layers[k].visible = false
+      }
+    } else if (mode === 'boundary') {
+      // Show only hazard boundaries
+      for (const k of Object.keys(this.layers)) {
+        if (k === 'shoreline' || k === 'susceptibility') {
+          this.layers[k].visible = true
+        } else {
+          this.layers[k].visible = false
+        }
+      }
+    } else {
+      // 'none' - show all layers
+      for (const k of Object.keys(this.layers)) {
+        this.layers[k].visible = true
+      }
+    }
+  }
+
+  // Get the geographic bounds of the current hazard layer
+  getHazardBounds() {
+    if (!this.kind) return null
+    // Map kind to layer name
+    const layerName = this.kind === 'coastal' ? 'water' : this.kind === 'landslide' ? 'debris' : this.kind
+    const layer = this.layers[layerName]
+    if (!layer || !layer.geometry) return null
+    const pos = layer.geometry.attributes.position
+    if (!pos) return null
+    let minX = Infinity, maxX = -Infinity
+    let minZ = Infinity, maxZ = -Infinity
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i)
+      const z = pos.getZ(i)
+      if (x < minX) minX = x
+      if (x > maxX) maxX = x
+      if (z < minZ) minZ = z
+      if (z > maxZ) maxZ = z
+    }
+    if (minX === Infinity || maxX === -Infinity) return null
+    return { minX, maxX, minZ, maxZ }
+  }
+
+  // Verify that a world position is inside the hazard mask
+  isInsideHazard(worldX, worldZ) {
+    if (!this.kind) return false
+    const g = this._lastResult?.grids
+    if (!g) return false
+    const { gw, gh } = this.mapping()
+    if (!gw) return false
+    // Convert world position to grid coordinates
+    const c = Math.round((worldX / this.mapping().sx + (gw - 1) / 2) / (g.grid_stride || 1))
+    const r = Math.round((worldZ / this.mapping().sy + (gh - 1) / 2) / (g.grid_stride || 1))
+    if (r < 0 || r >= g.grid_h || c < 0 || c >= g.grid_w) return false
+    const mask = g._maskU8
+    if (!mask) return false
+    return mask[r * g.grid_w + c] === 1
+  }
+
+  // Store the last result for debugging
+  _storeResult(result) {
+    this._lastResult = result
   }
 
   focusOn(x, y, z) {

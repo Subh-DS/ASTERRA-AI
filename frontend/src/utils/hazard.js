@@ -37,6 +37,8 @@ export function decodeGrids(result) {
   g._sourceU8 = take('source_b64', b64ToU8)
   g._pathU8 = take('path_mask_b64', b64ToU8)
   g._depU8 = take('deposition_b64', b64ToU8)
+  g._susceptibilityF32 = take('susceptibility_b64', b64ToF32)
+  g._slopeF32 = take('slope_b64', b64ToF32)
   g._decoded = true
   return g
 }

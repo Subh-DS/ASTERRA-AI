@@ -256,9 +256,14 @@ def build_mesh_from_dsm(dsm, transform, z_origin=None):
 
 
 def add_terrain_skirt(mesh, depth=None):
-    """Give the terrain surface a small, textured vertical edge."""
+    """Create a separate skirt mesh for the terrain's vertical edge.
+
+    Returns (terrain_mesh, skirt_mesh, has_skirt). The skirt is separated so
+    it can use a solid color material instead of the RGB texture, preventing
+    vertical stripe artifacts caused by planar UV mapping on vertical faces.
+    """
     if len(mesh.faces) == 0 or len(mesh.vertices) == 0:
-        return mesh, False
+        return mesh, None, False
     edge_counts = {}
     for face in mesh.faces:
         for start, end in ((face[0], face[1]), (face[1], face[2]), (face[2], face[0])):
@@ -266,7 +271,7 @@ def add_terrain_skirt(mesh, depth=None):
             edge_counts[edge] = edge_counts.get(edge, 0) + 1
     boundary = [edge for edge, count in edge_counts.items() if count == 1]
     if not boundary:
-        return mesh, False
+        return mesh, None, False
     z_min = float(np.min(mesh.vertices[:, 2]))
     z_max = float(np.max(mesh.vertices[:, 2]))
     skirt_depth = float(depth if depth is not None else max(1.0, (z_max - z_min) * 0.08))
@@ -278,12 +283,14 @@ def add_terrain_skirt(mesh, depth=None):
     for a, b in boundary:
         side_faces.append((a, b, bottom_index[a]))
         side_faces.append((b, bottom_index[b], bottom_index[a]))
-    mesh = trimesh.Trimesh(
-        vertices=np.vstack((mesh.vertices, bottom_vertices)).astype(np.float32),
-        faces=np.vstack((mesh.faces, np.asarray(side_faces, dtype=np.int64))),
+    all_vertices = np.vstack((mesh.vertices, bottom_vertices)).astype(np.float32)
+    skirt_face_array = np.asarray(side_faces, dtype=np.int64)
+    skirt_mesh = trimesh.Trimesh(
+        vertices=all_vertices,
+        faces=skirt_face_array,
         process=False,
     )
-    return mesh, True
+    return mesh, skirt_mesh, True
 
 
 def create_dsm_mesh(dsm_path, target_size=512, z_units="meters", surface_overrides=None):
@@ -295,7 +302,7 @@ def create_dsm_mesh(dsm_path, target_size=512, z_units="meters", surface_overrid
     )
 
     mesh, metadata = build_mesh_from_dsm(dsm, transform)
-    mesh, has_skirt = add_terrain_skirt(mesh)
+    mesh, skirt_mesh, has_skirt = add_terrain_skirt(mesh)
 
     metadata.update(
         {
@@ -317,4 +324,4 @@ def create_dsm_mesh(dsm_path, target_size=512, z_units="meters", surface_overrid
         }
     )
 
-    return mesh, metadata
+    return mesh, skirt_mesh, metadata

@@ -8,6 +8,13 @@ system prompt. Falls back to the local knowledge base if the API is unavailable.
 """
 
 import os
+from pathlib import Path
+
+# Load .env file from project root (two levels up from backend/services/)
+_env_path = Path(__file__).resolve().parents[2] / ".env"
+if _env_path.exists():
+    from dotenv import load_dotenv
+    load_dotenv(_env_path)
 
 
 
@@ -352,7 +359,7 @@ GEOSPATIAL_KB = {
     },
     "segformer": {
         "keywords": ["segformer", "segmentation model", "nvidia", "ade20k"],
-        "response": (
+        "response":(
             "**SegFormer**" (NVIDIA, ADE20K fine-tuned) is the semantic segmentation model used by "
             "ASTERRA for land cover classification. It produces pixel-level masks for buildings, "
             "vegetation, water, roads, and other categories. The model runs on GPU when available, "

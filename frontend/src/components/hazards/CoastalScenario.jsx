@@ -23,7 +23,12 @@ export default function CoastalScenario({ onDone }) {
     }
     setHazard({ status: 'running', error: null })
     try {
-      const res = await hazardApi.simulate(dsm.id, 'coastal_inundation', { water_level_m: clamped })
+      const res = await hazardApi.simulate(dsm.id, 'coastal_inundation', {
+        water_level_m: clamped,
+        // Hydrological connectivity is computed in the backend:
+        // water can only reach cells connected to the coast through
+        // a continuous path of cells below water level
+      })
       setHazard({ status: 'complete', result: res, animT: 1, showSimulated: true, error: null })
       onDone?.()
     } catch (err) {

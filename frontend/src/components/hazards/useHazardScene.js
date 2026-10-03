@@ -10,17 +10,22 @@ function focusFor(result, ctrl, heights) {
     const g = result.grids
     const H = result.terrain_source.grid[0]
     const W = result.terrain_source.grid[1]
+    const stride = g.grid_stride || 1
     if (result.simulation_type === 'coastal_inundation' && g._depthF32) {
       let bi = 0
       for (let i = 1; i < g._depthF32.length; i++) if (g._depthF32[i] > g._depthF32[bi]) bi = i
       if (g._depthF32[bi] <= 0) return
-      const r = Math.floor(bi / g.grid_w) * g.grid_stride
-      const c = (bi % g.grid_w) * g.grid_stride
+      const r = Math.floor(bi / g.grid_w) * stride
+      const c = (bi % g.grid_w) * stride
       const [x, y, z] = ctrl.worldOf(Math.min(H - 1, r), Math.min(W - 1, c), heights, W)
       ctrl.focusOn(x, y, z)
     } else if (result.simulation_type === 'landslide') {
       const [r, c] = result.statistics.source_center_rc
-      const [x, y, z] = ctrl.worldOf(r, c, heights, W)
+      const [x, y, z] = ctrl.worldOf(
+        Math.min(H - 1, Math.max(0, r)),
+        Math.min(W - 1, Math.max(0, c)),
+        heights, W
+      )
       ctrl.focusOn(x, y, z)
     }
   } catch { /* camera assist is best-effort */ }
@@ -52,13 +57,20 @@ export function useHazardScene() {
     decodeGrids(result)
     const H = result.terrain_source.grid[0]
     const W = result.terrain_source.grid[1]
-    const heights = (dsm.width === W && dsm.height === H) ? dsm.heights : null
+    const g = result.grids
+    const stride = g.grid_stride || 1
+    // The backend returns downsampled grids. The frontend rendering uses
+    // the stride parameter to correctly map grid cells to world coordinates.
+    // The DSM heights are passed for elevation sampling at each grid cell.
+    const heights = dsm.heights
     try {
       if (result.simulation_type === 'coastal_inundation') {
-        ctrl.showCoastal(result, heights)
+        ctrl.showCoastal(result, heights, stride)
+      } else if (result.simulation_type === 'landslide_susceptibility') {
+        ctrl.showSusceptibility(result, heights, stride)
       } else {
         if (!heights) return
-        ctrl.showLandslide(result, heights)
+        ctrl.showLandslide(result, heights, stride)
       }
     } catch (err) {
       // A 3D-visualization bug must never take down the viewer: the
@@ -85,7 +97,10 @@ export function useHazardScene() {
   }, [result])
   useEffect(() => { ctrlRef.current?.setGroupVisible(showSimulated) }, [showSimulated])
   useEffect(() => { ctrlRef.current?.setT(animT) }, [animT])
-  useEffect(() => { ctrlRef.current?.setStorm?.(storm) }, [storm])
+  useEffect(() => {
+    const intensity = useApp.getState().hazard.rainfallIntensity || 0.5
+    ctrlRef.current?.setStorm?.(storm, intensity)
+  }, [storm])
   useEffect(() => {
     const ctrl = ctrlRef.current
     if (!ctrl) return

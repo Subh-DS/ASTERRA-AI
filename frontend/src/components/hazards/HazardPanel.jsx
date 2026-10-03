@@ -47,10 +47,12 @@ export default function HazardPanel() {
       {hazard.error && <div className="hz-error" role="alert">{hazard.error}</div>}
       {hazard.result && (
         <>
-          <div className="hz-viewmode" role="group" aria-label="Before and after comparison">
-            <button type="button" className={!hazard.showSimulated ? 'on' : ''} onClick={() => setHazard({ showSimulated: false })}>Before</button>
-            <button type="button" className={hazard.showSimulated ? 'on' : ''} onClick={() => setHazard({ showSimulated: true })}>Simulated</button>
-          </div>
+          {hazard.result.simulation_type !== 'landslide_susceptibility' && (
+            <div className="hz-viewmode" role="group" aria-label="Before and after comparison">
+              <button type="button" className={!hazard.showSimulated ? 'on' : ''} onClick={() => setHazard({ showSimulated: false })}>Before</button>
+              <button type="button" className={hazard.showSimulated ? 'on' : ''} onClick={() => setHazard({ showSimulated: true })}>Simulated</button>
+            </div>
+          )}
           <HazardStats />
           <HazardLayerControls />
           <HazardLegend />

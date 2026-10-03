@@ -114,14 +114,15 @@ export const useApp = create((set, get) => ({
 
   hazard: {
     panelOpen: false,
-    type: 'coastal_inundation',
+    type: 'landslide_susceptibility',
     status: 'idle',
     error: null,
     result: null,
-    layers: { water: true, shoreline: true, scar: true, debris: true, deposition: true, particles: true },
+    layers: { water: true, shoreline: true, scar: true, debris: true, deposition: true, particles: true, susceptibility: true },
     animT: 0,
     showSimulated: true,
     storm: false,
+    rainfallIntensity: 0.5,
     quake: null,
     evac: null,
     evacRequest: 0,
@@ -129,7 +130,7 @@ export const useApp = create((set, get) => ({
   },
   setHazard: (patch) => set((s) => ({ hazard: { ...s.hazard, ...patch } })),
   setHazardLayers: (patch) => set((s) => ({ hazard: { ...s.hazard, layers: { ...s.hazard.layers, ...patch } } })),
-  resetHazard: () => set((s) => ({ hazard: { ...s.hazard, status: 'idle', error: null, result: null, animT: 0, showSimulated: true, storm: false, quake: null, evac: null, mission: { playing: false, t: 0, speed: 1 } } })),
+  resetHazard: () => set((s) => ({ hazard: { ...s.hazard, status: 'idle', error: null, result: null, animT: 0, showSimulated: true, storm: false, quake: null, evac: null, mission: { playing: false, t: 0, speed: 1 }, layers: { water: true, shoreline: true, scar: true, debris: true, deposition: true, particles: true, susceptibility: true } } })),
 }))
 
 function freshJob() {

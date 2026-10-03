@@ -364,6 +364,69 @@ async def chat_endpoint(payload: dict):
     return {"reply": reply}
 
 
+@app.post("/api/hazards/simulate")
+async def hazard_simulate_endpoint(payload: dict):
+    """Run a hazard simulation on a completed job's DSM.
+
+    Request body:
+        job_id: str — the completed job ID
+        type: str — 'coastal_inundation' | 'landslide' | 'evacuation'
+        parameters: dict — simulation-specific parameters
+
+    Returns:
+        Simulation result with grids, statistics, and metadata
+    """
+    try:
+        from .services.hazard_service import run_simulation
+    except ImportError:
+        from backend.services.hazard_service import run_simulation
+
+    job_id = payload.get("job_id")
+    sim_type = payload.get("type")
+    parameters = payload.get("parameters", {})
+
+    if not job_id:
+        raise HTTPException(400, "job_id is required")
+    if not sim_type:
+        raise HTTPException(400, "type is required")
+
+    # Find the job's DSM path
+    try:
+        job = manager.store.get(job_id)
+    except KeyError:
+        raise HTTPException(404, "unknown job")
+
+    if job.get("status") != "complete":
+        raise HTTPException(400, "job is not complete")
+
+    # Get the DSM path from the job result
+    result = job.get("result") or {}
+    dsm_path = result.get("artifacts", {}).get("dsm")
+    if not dsm_path:
+        raise HTTPException(400, "job has no DSM artifact")
+
+    from pathlib import Path
+    dsm_path = Path(dsm_path)
+    if not dsm_path.exists():
+        raise HTTPException(404, "DSM file not found")
+
+    # Find the semantic mask path for land cover analysis
+    mask_path = None
+    job_paths = manager.store.paths(job_id)
+    if job_paths.semantic_mask.exists():
+        mask_path = job_paths.semantic_mask
+
+    try:
+        sim_result = run_simulation(dsm_path, sim_type, parameters, mask_path=mask_path)
+        return sim_result
+    except ValueError as exc:
+        raise HTTPException(400, str(exc))
+    except FileNotFoundError as exc:
+        raise HTTPException(404, str(exc))
+    except Exception as exc:
+        raise HTTPException(500, f"Simulation failed: {exc}")
+
+
 @app.post("/api/jobs/{job_id}/validate")
 async def validate_reference(job_id: str, reference: UploadFile = File(...)):
     job = _job(job_id)

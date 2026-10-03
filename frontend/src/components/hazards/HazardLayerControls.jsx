@@ -1,6 +1,14 @@
 import { useApp } from '../../store/useAppStore'
 
-const LAYER_LABELS = { water: 'Water', shoreline: 'Shoreline', scar: 'Scar', debris: 'Debris mass', deposition: 'Deposition', particles: 'Debris particles' }
+const LAYER_LABELS = {
+  water: 'Water',
+  shoreline: 'Shoreline',
+  scar: 'Scar',
+  debris: 'Debris mass',
+  deposition: 'Deposition',
+  particles: 'Debris particles',
+  susceptibility: 'Susceptibility map',
+}
 
 export default function HazardLayerControls() {
   const result = useApp((s) => s.hazard.result)
@@ -8,7 +16,12 @@ export default function HazardLayerControls() {
   const setHazardLayers = useApp((s) => s.setHazardLayers)
   if (!result) return null
   const coastal = result.simulation_type === 'coastal_inundation'
-  const keys = coastal ? ['water', 'shoreline'] : ['scar', 'debris', 'deposition', 'particles']
+  const susceptibility = result.simulation_type === 'landslide_susceptibility'
+  const keys = susceptibility
+    ? ['susceptibility']
+    : coastal
+      ? ['water', 'shoreline']
+      : ['scar', 'debris', 'deposition', 'particles']
   return (
     <div className="hz-layers">
       <h4>Layers</h4>

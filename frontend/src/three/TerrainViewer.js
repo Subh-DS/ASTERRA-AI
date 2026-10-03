@@ -662,7 +662,7 @@ export class TerrainViewer {
     // fills the void beneath the tile edges, plus massing blocks extruded
     // from measured building footprints (never invented).
     this._buildGroundPlane(spanH)
-    this._buildStructures(dsm, { minH, sx, sy, gw, gh })
+    this._buildStructures(dsm, { minH, sx, sy, gw, gh, tex })
 
     this.sun.position.set(-(gw - 1) * sx * 0.55, (gh - 1) * sy * 0.6, (gh - 1) * sy * 0.62)
     if (this.caps.shadows) {
@@ -743,7 +743,7 @@ export class TerrainViewer {
     this.scene.add(plane)
   }
 
-  _buildStructures(dsm, { minH, sx, sy, gw, gh }) {
+  _buildStructures(dsm, { minH, sx, sy, gw, gh, tex }) {
     this._removeStructures()
     const mappedEnvironment = dsm?.environment || {}
     const hasMappedEnvironment = ['roads', 'water', 'landcover', 'trees'].some((key) => (mappedEnvironment[key] || []).length)
@@ -837,6 +837,20 @@ export class TerrainViewer {
         roughness: 0.78,
         metalness: 0.02,
       })
+      if (tex) {
+        mat.map = tex
+        mat.color.set(0xffffff)
+        const pos = geo.attributes.position
+        const uv = geo.attributes.uv
+        if (pos && uv) {
+          for (let vi = 0; vi < pos.count; vi++) {
+            const u = (pos.getX(vi) + ox) / ((gw - 1) * sx)
+            const v = (pos.getZ(vi) + oz) / ((gh - 1) * sy)
+            uv.setXY(vi, u, v)
+          }
+          uv.needsUpdate = true
+        }
+      }
       this._ownedMaterials.add(mat)
       const mesh = new THREE.Mesh(geo, mat)
       mesh.position.y = ground

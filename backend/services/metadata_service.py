@@ -275,10 +275,9 @@ def write_gcp_csv(gcps, output_path, reference_crs=None):
 
 def write_preview_assets(source_path, dsm_path, texture_path, normal_path):
     from PIL import Image
-    with rasterio.open(source_path) as src:
-        image = src.read([1, 2, 3], out_shape=(3, min(2048, src.height), min(2048, src.width)), resampling=rasterio.enums.Resampling.bilinear)
-    image = _normalize_rgb_uint8(image, np.full(image.shape[1:], 255, dtype=np.uint8))
-    Image.fromarray(np.transpose(image, (1, 2, 0)), "RGB").save(texture_path, quality=92, optimize=True)
+    from visualization.glb_exporter import load_rgb_texture_image
+    image = load_rgb_texture_image(source_path, texture_width=2048, texture_height=2048)
+    image.save(texture_path, quality=92, optimize=True)
     with rasterio.open(dsm_path) as src:
         z = src.read(1).astype(np.float32)
         pixel_x, pixel_y = abs(float(src.res[0])), abs(float(src.res[1]))
